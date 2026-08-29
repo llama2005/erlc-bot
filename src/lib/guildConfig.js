@@ -23,6 +23,7 @@ const COLUMNS = {
   modcallLogChannel: { col: "modcall_log_channel", def: () => null },
   sessionChannel: { col: "session_channel", def: () => null },
   sessionPingRole: { col: "session_ping_role", def: () => null },
+  staffAlertChannel: { col: "staff_alert_channel", def: () => null },
 };
 
 function hydrate(row) {

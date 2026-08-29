@@ -15,6 +15,7 @@ import {
   hasPendingRequest,
 } from "../../lib/banRequests.js";
 import { hasPermissionInteraction } from "../../lib/permissions.js";
+import { reportOffDuty } from "../../lib/dutyWatch.js";
 import { PLAYER_ARG } from "./_shared.js";
 
 const PENDING_COLOR = 0x3498db;
@@ -42,6 +43,14 @@ registerComponent("banreq", async (interaction, [action, idStr]) => {
     return interaction.reply({ content: "You need the ER:LC admin role (or Manage Server) to decide this.", ephemeral: true });
 
   await interaction.deferUpdate();
+
+  reportOffDuty(interaction.client, {
+    guild: interaction.guild,
+    userId: interaction.user.id,
+    userTag: interaction.user.tag ?? interaction.user.username,
+    action: `ban request ${action}`,
+    invokedIn: interaction.channelId,
+  }).catch(() => {});
 
   const base = EmbedBuilder.from(interaction.message.embeds[0]);
 

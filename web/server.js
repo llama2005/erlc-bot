@@ -141,6 +141,7 @@ app.post("/dashboard/:guildId", requireAuth, requireGuildAdmin, async (req, res)
     ingameLogChannel: orNull(b.ingameLogChannel),
     modcallLogChannel: orNull(b.modcallLogChannel),
     sessionChannel: orNull(b.sessionChannel),
+    staffAlertChannel: orNull(b.staffAlertChannel),
     erlcStaffRole: orNull(b.erlcStaffRole),
     erlcAdminRole: orNull(b.erlcAdminRole),
     shiftRole: orNull(b.shiftRole),

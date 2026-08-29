@@ -15,6 +15,7 @@ const SETTINGS = {
   "ingame-log": { field: "ingameLogChannel", kind: "channel", label: "In-game command log" },
   "modcall-log": { field: "modcallLogChannel", kind: "channel", label: "Mod-call log" },
   "session-channel": { field: "sessionChannel", kind: "channel", label: "Session channel" },
+  "staff-alert": { field: "staffAlertChannel", kind: "channel", label: "Staff-alert channel" },
   "erlc-key": { field: "erlcKey", kind: "secret", label: "ER:LC API key" },
   "erlc-role": { field: "erlcStaffRole", kind: "role", label: "ER:LC staff role" },
   "erlc-admin-role": { field: "erlcAdminRole", kind: "role", label: "ER:LC admin role" },

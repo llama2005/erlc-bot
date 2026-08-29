@@ -24,6 +24,7 @@ const FIELDS = {
   ingameLogChannel: { kind: "channel", label: "In-game command log", desc: "Auto-posts staff :commands run in-game" },
   modcallLogChannel: { kind: "channel", label: "Mod-call log", desc: "Auto-posts !mod calls and pings staff" },
   sessionChannel: { kind: "channel", label: "Session channel", desc: "Where /session SSU/SSD announcements go" },
+  staffAlertChannel: { kind: "channel", label: "Staff-alert channel", desc: "Off-duty staff command use is reported here" },
   // roles
   erlcStaffRole: { kind: "role", label: "Staff role", desc: "Use ER:LC / moderation / shift / session commands" },
   erlcAdminRole: { kind: "role", label: "Admin role", desc: "Approve ban requests, shift admin, void others' cases" },

@@ -13,6 +13,7 @@ import { autocompleteProviders } from "./autocomplete.js";
 import { dispatchComponent } from "./components.js";
 import { ensureGuildConfig } from "./guildConfig.js";
 import { requirePermission } from "./permissions.js";
+import { DUTY_NODES, reportOffDuty } from "./dutyWatch.js";
 import { logCommand } from "./modlog.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -300,13 +301,24 @@ export class CommandManager {
       if (!interaction && command.defer) await ctx.defer();
       await command.execute(ctx);
       if (ctx.guild) {
+        const argsText = renderArgs(command, ctx.args);
         logCommand(this.client, {
           guildId: ctx.guild.id,
           user: ctx.author,
           commandName: command.name,
-          argsText: renderArgs(command, ctx.args),
+          argsText,
           channel: ctx.channel,
         }).catch(() => {});
+        if (DUTY_NODES.has(command.permission)) {
+          reportOffDuty(this.client, {
+            guild: ctx.guild,
+            userId: ctx.author.id,
+            userTag: ctx.author.tag ?? ctx.author.username,
+            action: `/${command.name}`,
+            detail: argsText || undefined,
+            invokedIn: ctx.channel?.id,
+          }).catch(() => {});
+        }
       }
     } catch (err) {
       console.error(`Command '${command.name}' failed:`, err);

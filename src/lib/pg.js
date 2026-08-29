@@ -69,7 +69,8 @@ const SCHEMA = `
     ingame_log_channel  TEXT,
     modcall_log_channel TEXT,
     session_channel     TEXT,
-    session_ping_role   TEXT
+    session_ping_role   TEXT,
+    staff_alert_channel TEXT
   );
 
   CREATE TABLE IF NOT EXISTS guild_counters (
@@ -172,8 +173,14 @@ const SCHEMA = `
   );
 `;
 
+// Forward migrations for columns added after a guild's DB was first created.
+const MIGRATIONS = `
+  ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS staff_alert_channel TEXT;
+`;
+
 export async function initSchema() {
   await pool.query(SCHEMA);
+  await pool.query(MIGRATIONS);
 }
 
 /**
