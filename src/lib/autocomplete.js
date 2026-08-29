@@ -53,6 +53,16 @@ export const autocompleteProviders = {
       .map((t) => ({ name: t.is_ban ? `${t.name} (ban)` : t.name, value: t.name }));
   },
 
+  /** Permission nodes for /permgroup. */
+  async permNodes(interaction, focused) {
+    const { NODES } = await import("./permissions.js");
+    const q = String(focused || "").toLowerCase();
+    return ["*", ...Object.keys(NODES)]
+      .filter((n) => !q || n.includes(q))
+      .slice(0, 25)
+      .map((n) => ({ name: n === "*" ? "* (everything)" : n, value: n }));
+  },
+
   /** Suggests this guild's shift types. */
   async shiftTypes(interaction, focused) {
     const { listShiftTypes } = await import("./shifts.js");

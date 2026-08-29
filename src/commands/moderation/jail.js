@@ -6,7 +6,7 @@ export default {
   module: "moderation",
   guildOnly: true,
   defer: true,
-  check: erlcStaff,
+  permission: "mod.jail",
   ratelimit: { scope: "user", uses: 5, per: 15_000 },
   args: [PLAYER_ARG, { name: "reason", type: "text", required: true, description: "Reason" }],
   execute: (ctx) => runAction(ctx, "jail", { reason: ctx.args.reason, ingame: (t) => `:jail ${t.name}` }),

@@ -53,7 +53,7 @@ h2 { font-size: 1.15rem; margin-top: 1.8em; border-bottom: 1px solid var(--borde
 
 .flash { background: #1c3a26; border: 1px solid var(--ok); color: #b8f0c8; padding: 10px 14px; border-radius: 8px; margin-bottom: 16px; }
 
-.settings section { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; margin-bottom: 16px; }
+main > section, .settings section { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; margin-bottom: 16px; }
 .settings label { display: block; margin: 10px 0; }
 .settings label.check { display: flex; align-items: center; gap: 8px; }
 .settings select, .settings input[type=text], .settings input[type=password] {
@@ -79,3 +79,5 @@ h2 form.inline { display: inline-flex; font-size: .8rem; font-weight: 400; margi
 .row { display: flex; gap: 8px; margin-top: 10px; }
 ul.plain { list-style: none; padding: 0; }
 ul.plain li { padding: 4px 0; }
+.nodegrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 4px 10px; margin: 8px 0; }
+.nodegrid .check { font-size: .88rem; }

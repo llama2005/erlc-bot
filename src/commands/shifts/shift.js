@@ -76,7 +76,7 @@ export default {
   module: "shifts",
   guildOnly: true,
   aliases: ["duty"],
-  check: erlcStaff,
+  permission: "shift.self",
   defaultSubcommand: "manage",
   subcommands: {
     manage: {
@@ -188,7 +188,7 @@ export default {
     activity: {
       description: "Check who met a shift-time requirement over a period.",
       defer: true,
-      check: erlcAdmin,
+      permission: "shift.admin",
       args: [
         { name: "requirement", type: "duration", required: true, description: "Minimum time, e.g. 2h" },
         { name: "period", type: "duration", required: false, description: "Window, e.g. 7d (default 7d)" },
@@ -221,7 +221,7 @@ export default {
     admin: {
       description: "Adjust or wipe a user's shift time (senior staff).",
       defer: true,
-      check: erlcAdmin,
+      permission: "shift.admin",
       args: [
         { name: "action", type: "string", required: true, description: "add | remove | wipe | list", choices: ["add", "remove", "wipe", "list"] },
         { name: "user", type: "user", required: true, description: "Target staff member" },

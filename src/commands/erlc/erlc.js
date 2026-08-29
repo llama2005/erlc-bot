@@ -34,7 +34,7 @@ export default {
   module: "erlc",
   guildOnly: true,
   aliases: ["prc"],
-  check: erlcStaff,
+  permission: "erlc.read",
   subcommands: {
     status: {
       description: "Show ER:LC server status.",
@@ -254,6 +254,7 @@ export default {
 
     pm: {
       description: "Send a private message to a player in-game (:pm).",
+      permission: "erlc.message",
       defer: true,
       args: [
         { name: "player", type: "string", required: true, description: "In-game player name", autocomplete: "erlcPlayers" },
@@ -268,6 +269,7 @@ export default {
 
     hint: {
       description: "Broadcast a hint to everyone in-game (:hint).",
+      permission: "erlc.message",
       defer: true,
       args: [{ name: "message", type: "text", required: true, description: "Hint text" }],
       ratelimit: { scope: "guild", uses: 1, per: 5000 },
@@ -279,6 +281,7 @@ export default {
 
     message: {
       description: "Broadcast a message to everyone in-game (:m).",
+      permission: "erlc.message",
       defer: true,
       args: [{ name: "message", type: "text", required: true, description: "Message text" }],
       ratelimit: { scope: "guild", uses: 1, per: 5000 },
@@ -292,7 +295,7 @@ export default {
       description: "Show the bot's public IP (for the api.erlc.gg command allowlist).",
       defer: true,
       ephemeral: true,
-      check: manageGuild,
+      permission: "config",
       async execute(ctx) {
         const ip = await getPublicIp();
         await ctx.reply({
@@ -307,7 +310,7 @@ export default {
     command: {
       description: "Run a raw in-game command (Manage Server only).",
       defer: true,
-      check: manageGuild,
+      permission: "erlc.command",
       args: [{ name: "command", type: "text", required: true, description: "e.g. :kill noah, :weather rain" }],
       ratelimit: { scope: "guild", uses: 1, per: 5000 },
       async execute(ctx) {

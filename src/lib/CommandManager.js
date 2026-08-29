@@ -12,6 +12,7 @@ import { askClaude } from "./ai.js";
 import { autocompleteProviders } from "./autocomplete.js";
 import { dispatchComponent } from "./components.js";
 import { ensureGuildConfig } from "./guildConfig.js";
+import { requirePermission } from "./permissions.js";
 import { logCommand } from "./modlog.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -38,7 +39,7 @@ export class CommandManager {
       }
       command.module ??= "general";
       command.args ??= [];
-      command.checks = command.check ? [command.check] : [];
+      command.checks = [command.permission && requirePermission(command.permission), command.check].filter(Boolean);
       this.commands.set(command.name, command);
       for (const alias of command.aliases ?? []) this.aliases.set(alias, command.name);
     }
@@ -70,7 +71,12 @@ export class CommandManager {
       botPermissions: sub.botPermissions ?? command.botPermissions,
       ratelimit: sub.ratelimit ?? command.ratelimit,
       args: sub.args ?? [],
-      checks: [command.check, sub.check].filter(Boolean),
+      checks: [
+        command.permission && requirePermission(command.permission),
+        command.check,
+        sub.permission && requirePermission(sub.permission),
+        sub.check,
+      ].filter(Boolean),
     };
   }
 

@@ -3,7 +3,7 @@ import { getCase, getLastCase, getLastCaseByMod, editReason, editType, voidCase 
 import { listModTypes } from "../../lib/modTypes.js";
 import { DISCORD_TYPES } from "../../lib/cases.js";
 import { COLORS, actionVerb, ok, err } from "../../lib/style.js";
-import { erlcStaff } from "./_shared.js";
+import { hasPermission } from "../../lib/permissions.js";
 
 /** Resolve "123" | "last" | "slast" to a case row. */
 async function findCase(ctx, ref) {
@@ -14,7 +14,8 @@ async function findCase(ctx, ref) {
   return Number.isInteger(n) ? getCase(ctx.guild.id, n) : null;
 }
 
-const canEdit = (ctx, c) => ctx.isOwner || ctx.permissions.has("ManageGuild") || c.moderator_id === ctx.author.id;
+const canEdit = async (ctx, c) =>
+  ctx.isOwner || ctx.permissions.has("ManageGuild") || c.moderator_id === ctx.author.id || (await hasPermission(ctx, "case.manage"));
 
 const CASE_ARG = { name: "case", type: "string", required: true, description: "Case number, 'last' (yours), or 'slast' (server)" };
 
@@ -30,7 +31,7 @@ export default {
   module: "moderation",
   guildOnly: true,
   aliases: ["modcase"],
-  check: erlcStaff,
+  permission: "case.view",
   subcommands: {
     view: {
       description: "Show a moderation case.",
@@ -64,7 +65,7 @@ export default {
       async execute(ctx) {
         const c = await findCase(ctx, ctx.args.case);
         if (!c) return ctx.reply({ content: err("No such case."), ephemeral: true });
-        if (!canEdit(ctx, c)) return ctx.reply({ content: err("You can only edit your own cases (or need Manage Server)."), ephemeral: true });
+        if (!(await canEdit(ctx, c))) return ctx.reply({ content: err("You can only edit your own cases (or need Manage Server)."), ephemeral: true });
         await editReason(ctx.guild.id, c.case_number, ctx.args.reason);
         await ctx.reply(ok(`Case #${c.case_number} reason updated.`));
       },
@@ -77,7 +78,7 @@ export default {
       async execute(ctx) {
         const c = await findCase(ctx, ctx.args.case);
         if (!c) return ctx.reply({ content: err("No such case."), ephemeral: true });
-        if (!canEdit(ctx, c)) return ctx.reply({ content: err("You can only edit your own cases (or need Manage Server)."), ephemeral: true });
+        if (!(await canEdit(ctx, c))) return ctx.reply({ content: err("You can only edit your own cases (or need Manage Server)."), ephemeral: true });
         const valid = c.platform === "roblox" ? (await listModTypes(ctx.guild.id)).map((t) => t.name) : DISCORD_TYPES;
         const t = ctx.args.type.toLowerCase();
         if (!valid.includes(t)) return ctx.reply({ content: err(`Type must be one of: ${valid.join(", ")}`), ephemeral: true });
@@ -93,7 +94,7 @@ export default {
       async execute(ctx) {
         const c = await findCase(ctx, ctx.args.case);
         if (!c) return ctx.reply({ content: err("No such case."), ephemeral: true });
-        if (!canEdit(ctx, c)) return ctx.reply({ content: err("You can only void your own cases (or need Manage Server)."), ephemeral: true });
+        if (!(await canEdit(ctx, c))) return ctx.reply({ content: err("You can only void your own cases (or need Manage Server)."), ephemeral: true });
         if (c.voided) return ctx.reply({ content: err(`Case #${c.case_number} is already voided.`), ephemeral: true });
         await voidCase(ctx.guild.id, c.case_number, ctx.author.id, ctx.args.reason);
         await ctx.reply(ok(`Case #${c.case_number} voided — no longer counts toward history totals.`));

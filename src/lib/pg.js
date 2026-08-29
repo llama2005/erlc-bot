@@ -154,6 +154,14 @@ const SCHEMA = `
     PRIMARY KEY (guild_id, log_type)
   );
 
+  CREATE TABLE IF NOT EXISTS perm_groups (
+    guild_id TEXT NOT NULL,
+    role_id  TEXT NOT NULL,
+    name     TEXT NOT NULL,
+    nodes    TEXT[] NOT NULL DEFAULT '{}',
+    PRIMARY KEY (guild_id, role_id)
+  );
+
   CREATE TABLE IF NOT EXISTS bot_guilds (
     guild_id     TEXT PRIMARY KEY,
     name         TEXT,

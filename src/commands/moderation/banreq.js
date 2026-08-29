@@ -14,7 +14,8 @@ import {
   resolveBanRequest,
   hasPendingRequest,
 } from "../../lib/banRequests.js";
-import { erlcStaff, PLAYER_ARG, keyFor } from "./_shared.js";
+import { hasPermissionInteraction } from "../../lib/permissions.js";
+import { PLAYER_ARG } from "./_shared.js";
 
 const PENDING_COLOR = 0x3498db;
 
@@ -22,11 +23,7 @@ function keyForGuild(guildId) {
   return getGuildConfig(guildId).erlcKey || config.erlc.devKey || null;
 }
 
-function isApprover(interaction) {
-  if (interaction.memberPermissions?.has("ManageGuild")) return true;
-  const roleId = getGuildConfig(interaction.guildId).erlcAdminRole;
-  return !!roleId && interaction.member?.roles?.cache?.has(roleId);
-}
+const isApprover = (interaction) => hasPermissionInteraction(interaction, "mod.banreq.approve");
 
 function buttons(id, disabled = false) {
   return new ActionRowBuilder().addComponents(
@@ -41,7 +38,7 @@ registerComponent("banreq", async (interaction, [action, idStr]) => {
   if (!req) return interaction.reply({ content: "That ban request no longer exists.", ephemeral: true });
   if (req.status !== "pending")
     return interaction.reply({ content: `Already ${req.status} by <@${req.resolved_by}>.`, ephemeral: true });
-  if (!isApprover(interaction))
+  if (!(await isApprover(interaction)))
     return interaction.reply({ content: "You need the ER:LC admin role (or Manage Server) to decide this.", ephemeral: true });
 
   await interaction.deferUpdate();
@@ -104,11 +101,10 @@ export default {
   guildOnly: true,
   defer: true,
   aliases: ["banrequest", "requestban"],
-  check: erlcStaff,
+  permission: "mod.banreq",
   ratelimit: { scope: "user", uses: 5, per: 30_000 },
   args: [PLAYER_ARG, { name: "reason", type: "text", required: true, description: "Reason" }],
   async execute(ctx) {
-    keyFor(ctx); // ensures a key exists (throws ErlcError otherwise)
     const target = await resolvePlayer(keyForGuild(ctx.guild.id), ctx.args.player);
     if (target?.unlinkedDiscordId)
       return ctx.reply({ content: `<@${target.unlinkedDiscordId}> hasn't linked a Roblox account (\`/verify\`).`, ephemeral: true });

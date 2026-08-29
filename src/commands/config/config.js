@@ -37,7 +37,7 @@ export default {
   guildOnly: true,
   ephemeral: true,
   aliases: ["settings", "cfg"],
-  userPermissions: ["ManageGuild"],
+  permission: "config",
   redactArgs: ["value"],
   args: [
     { name: "setting", type: "string", required: false, description: "What to configure", choices: NAMES },

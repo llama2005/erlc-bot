@@ -106,7 +106,7 @@ export async function runAction(ctx, type, { reason, ingame } = {}) {
       type,
       reason,
       target: { name: target.name, id: target.id, headshot },
-      moderator: { id: ctx.author.id, tag: modTag },
+      moderator: { id: ctx.author.id, tag: modTag, iconURL: ctx.author.displayAvatarURL?.() },
       extraFields: [{ name: "History", value: history, inline: true }],
       footer: footerNotes.join(" · ") || undefined,
     });

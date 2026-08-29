@@ -6,7 +6,7 @@ export default {
   module: "moderation",
   guildOnly: true,
   defer: true,
-  check: erlcStaff,
+  permission: "mod.ban",
   ratelimit: { scope: "user", uses: 5, per: 15_000 },
   args: [PLAYER_ARG, { name: "reason", type: "text", required: true, description: "Reason" }],
   execute: (ctx) => runAction(ctx, "ban", { reason: ctx.args.reason, ingame: (t) => `:ban ${t.name}` }),

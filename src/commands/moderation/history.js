@@ -10,7 +10,7 @@ export default {
   guildOnly: true,
   defer: true,
   aliases: ["modlogs", "record", "modhistory"],
-  check: erlcStaff,
+  permission: "case.view",
   ratelimit: { scope: "user", uses: 10, per: 15_000 },
   args: [PLAYER_ARG],
   async execute(ctx) {

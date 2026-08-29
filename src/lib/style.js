@@ -1,7 +1,7 @@
 import { EmbedBuilder, time } from "discord.js";
 
-// Convention borrowed from Whispbot: short confirmations are plain text with a
-// leading tick/cross; richer output uses a colour-coded embed.
+// Short confirmations = plain text with a leading tick/cross; richer output = a
+// colour-coded embed.
 export const EMOJI = {
   tick: "✅",
   cross: "❌",
@@ -21,7 +21,6 @@ export const COLORS = {
   success: 0x57f287,
   danger: 0xed4245,
   neutral: 0x2b2d31,
-  // per moderation action
   warn: 0xf1c40f,
   kick: 0xe67e22,
   ban: 0xe74c3c,
@@ -36,36 +35,39 @@ export const COLORS = {
   purge: 0x95a5a6,
 };
 
-const VERB = {
-  warn: "Warned",
-  kick: "Kicked",
-  ban: "Banned",
-  unban: "Unbanned",
-  jail: "Jailed",
-  unjail: "Released",
-  note: "Note",
-  bolo: "BOLO",
-  timeout: "Timed out",
-  unmute: "Unmuted",
-  softban: "Softbanned",
+const TYPE = {
+  warn: { verb: "Warned", emoji: "⚠️" },
+  kick: { verb: "Kicked", emoji: "👢" },
+  ban: { verb: "Banned", emoji: "🔨" },
+  unban: { verb: "Unbanned", emoji: "🕊️" },
+  jail: { verb: "Jailed", emoji: "🔒" },
+  unjail: { verb: "Released", emoji: "🔓" },
+  note: { verb: "Note", emoji: "📝" },
+  bolo: { verb: "BOLO", emoji: "🔍" },
+  timeout: { verb: "Timed out", emoji: "🔇" },
+  unmute: { verb: "Unmuted", emoji: "🔊" },
+  softban: { verb: "Softbanned", emoji: "🧹" },
+  purge: { verb: "Purge", emoji: "🧽" },
 };
 
-export const actionVerb = (type) => VERB[type] ?? type;
+export const actionVerb = (type) => TYPE[type]?.verb ?? type;
+export const actionEmoji = (type) => TYPE[type]?.emoji ?? "•";
 
 /**
- * The canonical moderation-case embed, used by replies AND the modlog so they
- * look identical.
+ * The canonical moderation-case embed — used by command replies AND the modlog so
+ * they're identical.
  *
  * @param {object} o
- * @param {number} o.caseNumber
+ * @param {number|string} o.caseNumber
  * @param {string} o.type
  * @param {string} o.reason
- * @param {{ name: string, id: string|null, headshot?: string|null, url?: string }} o.target
- * @param {{ id: string, tag?: string }} o.moderator
+ * @param {{ name: string, id: string|null, headshot?: string|null, url?: string|null }} o.target
+ * @param {{ id: string, tag?: string, iconURL?: string }} o.moderator
  * @param {string} [o.footer]
  * @param {boolean} [o.voided]
- * @param {number} [o.createdAt] epoch ms
+ * @param {number} [o.createdAt] epoch ms (defaults to now)
  * @param {{name:string,value:string,inline?:boolean}[]} [o.extraFields]
+ * @param {string} [o.durationText]
  */
 export function caseEmbed(o) {
   const url =
@@ -74,18 +76,23 @@ export function caseEmbed(o) {
       : o.target.id
         ? `https://www.roblox.com/users/${o.target.id}/profile`
         : null;
+  const at = Math.floor((o.createdAt ?? Date.now()) / 1000);
+
   const embed = new EmbedBuilder()
     .setColor(o.voided ? COLORS.neutral : COLORS[o.type] ?? COLORS.primary)
-    .setAuthor({ name: `Case #${o.caseNumber} · ${actionVerb(o.type)}${o.voided ? " (voided)" : ""}` })
-    .setDescription(url ? `**[${o.target.name}](${url})**  \`${o.target.id ?? "?"}\`` : `**${o.target.name}**  \`${o.target.id ?? "?"}\``)
-    .addFields(
-      { name: "Reason", value: (o.reason || "—").slice(0, 1024) },
-      { name: "Moderator", value: `<@${o.moderator.id}>`, inline: true },
-    );
+    .setAuthor({ name: `Case #${o.caseNumber} · ${actionEmoji(o.type)} ${actionVerb(o.type)}${o.voided ? "  (voided)" : ""}` })
+    .setDescription(url ? `### [${o.target.name}](${url})\n\`${o.target.id ?? "?"}\`` : `### ${o.target.name}\n\`${o.target.id ?? "?"}\``)
+    .addFields({ name: "Reason", value: (o.reason || "*No reason provided*").slice(0, 1024) })
+    .setTimestamp(o.createdAt ?? Date.now());
+
+  const meta = [{ name: "Moderator", value: `<@${o.moderator.id}>`, inline: true }, { name: "When", value: time(at, "R"), inline: true }];
+  if (o.durationText) meta.push({ name: "Duration", value: o.durationText, inline: true });
+  embed.addFields(...meta);
+
   if (url) embed.setURL(url);
   if (o.target.headshot) embed.setThumbnail(o.target.headshot);
-  if (o.createdAt) embed.addFields({ name: "When", value: time(Math.floor(o.createdAt / 1000), "R"), inline: true });
+  if (o.moderator.iconURL) embed.setAuthor({ name: embed.data.author.name, iconURL: o.moderator.iconURL });
   if (o.extraFields?.length) embed.addFields(...o.extraFields);
-  if (o.footer) embed.setFooter({ text: o.footer });
+  embed.setFooter({ text: o.footer ? `⚠ ${o.footer}` : `${o.type} · logged permanently` });
   return embed;
 }

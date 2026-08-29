@@ -60,7 +60,7 @@ export default {
   module: "erlc",
   guildOnly: true,
   aliases: ["ssu"],
-  check: erlcStaff,
+  permission: "session",
   defaultSubcommand: "startup",
   subcommands: {
     startup: {

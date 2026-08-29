@@ -55,13 +55,11 @@ async function act(ctx, { type, user, reason, durationMs = null, perform, dm = t
       type,
       reason,
       target: { name: tag, id: user.id, url: null, headshot: user.displayAvatarURL?.() },
-      moderator: { id: ctx.author.id },
-      extraFields: [
-        ...(durationMs ? [{ name: "Duration", value: formatDuration(durationMs), inline: true }] : []),
-        { name: "History", value: history, inline: true },
-      ],
+      moderator: { id: ctx.author.id, iconURL: ctx.author.displayAvatarURL?.() },
+      durationText: durationMs ? formatDuration(durationMs) : undefined,
+      extraFields: [{ name: "History", value: history, inline: true }],
       footer: notes.join(" · ") || undefined,
-    }).setDescription(`<@${user.id}>  \`${user.id}\``);
+    }).setDescription(`### <@${user.id}>\n\`${user.id}\``);
 
   const log = await postToModlog(ctx.guild, make()).catch(() => ({ ok: false, reason: "error" }));
   if (log.reason) notes.push(`couldn't post to the modlog channel — ${log.reason}`);
@@ -278,7 +276,7 @@ export default {
           type: "purge",
           reason: `${deleted.size} messages in #${ctx.channel.name}${user ? ` from ${user.tag}` : ""}`,
           target: { name: ctx.channel.name, id: ctx.channel.id, url: undefined },
-          moderator: { id: ctx.author.id },
+          moderator: { id: ctx.author.id, iconURL: ctx.author.displayAvatarURL?.() },
         }));
       },
     },

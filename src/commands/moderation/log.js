@@ -9,7 +9,7 @@ export default {
   guildOnly: true,
   defer: true,
   aliases: ["moderate", "rlog"],
-  check: erlcStaff,
+  permission: "mod.warn",
   ratelimit: { scope: "user", uses: 5, per: 15_000 },
   args: [
     PLAYER_ARG,

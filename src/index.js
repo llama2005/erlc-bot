@@ -5,12 +5,14 @@ import { CommandManager } from "./lib/CommandManager.js";
 import { getPublicIp } from "./lib/publicIp.js";
 import { startErlcPoller } from "./lib/erlcPoller.js";
 import { warmGuildConfigs, ensureGuildConfig, startConfigSync } from "./lib/guildConfig.js";
+import { startPermSync } from "./lib/permissions.js";
 import { syncBotGuild, removeBotGuild, syncAllBotGuilds } from "./lib/botGuilds.js";
 
 requireConfig("DISCORD_TOKEN", "ANTHROPIC_API_KEY", "DATABASE_URL");
 await initSchema();
 await warmGuildConfigs();
 await startConfigSync().catch((e) => console.error("config sync setup failed:", e.message));
+await startPermSync().catch((e) => console.error("perm sync setup failed:", e.message));
 
 const client = new Client({
   intents: [

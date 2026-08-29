@@ -10,7 +10,7 @@ export default {
   module: "config",
   guildOnly: true,
   ephemeral: true,
-  userPermissions: ["ManageGuild"],
+  permission: "config",
   aliases: ["modtypes"],
   subcommands: {
     list: {

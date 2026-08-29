@@ -1,0 +1,54 @@
+<%- include("partials/head", { title: "Permissions · " + guild.name }) %>
+<%- include("partials/guildnav") %>
+
+<p class="muted">
+  Grant Discord roles specific bot capabilities. <strong>Manage Server</strong> and the server owner always have everything.
+  <% if (cfg.erlcAdminRole) { %> Built-in admin role: &lt;@&amp;<%= cfg.erlcAdminRole %>&gt; (all).<% } %>
+  <% if (cfg.erlcStaffRole) { %> Built-in staff role: &lt;@&amp;<%= cfg.erlcStaffRole %>&gt; (standard bundle).<% } %>
+</p>
+
+<%
+const roleName = (id) => { const r = roles.find(x => x.id === id); return r ? "@" + r.name : id; };
+function nodeChecks(prefix, granted) {
+  const g = new Set(granted || []);
+  const all = g.has("*");
+  let h = `<label class="check"><input type="checkbox" name="nodes" value="*" ${all ? "checked" : ""}> <strong>* — everything</strong></label><div class="nodegrid">`;
+  for (const [node, desc] of Object.entries(nodes)) {
+    h += `<label class="check" title="${desc}"><input type="checkbox" name="nodes" value="${node}" ${g.has(node) ? "checked" : ""}> ${node}</label>`;
+  }
+  return h + "</div>";
+}
+%>
+
+<% groups.forEach(function(grp){ %>
+  <section>
+    <h2><%= grp.name %> — <span class="mono"><%= roleName(grp.role_id) %></span></h2>
+    <form method="post" action="/dashboard/<%= guild.id %>/permissions">
+      <input type="hidden" name="roleId" value="<%= grp.role_id %>">
+      <label>Name <input type="text" name="name" value="<%= grp.name %>" maxlength="40"></label>
+      <%- nodeChecks(grp.role_id, grp.nodes) %>
+      <div class="row">
+        <button class="btn">Save</button>
+      </div>
+    </form>
+    <form method="post" action="/dashboard/<%= guild.id %>/permissions/<%= grp.role_id %>/delete" onsubmit="return confirm('Delete this group?')">
+      <button class="btn ghost sm">Delete group</button>
+    </form>
+  </section>
+<% }) %>
+
+<section>
+  <h2>Add a permission group</h2>
+  <form method="post" action="/dashboard/<%= guild.id %>/permissions">
+    <label>Role
+      <select name="roleId" required>
+        <option value="">— pick a role —</option>
+        <% roles.forEach(function(r){ %><option value="<%= r.id %>">@<%= r.name %></option><% }) %>
+      </select>
+    </label>
+    <label>Name <input type="text" name="name" placeholder="e.g. Trial Mod" maxlength="40" required></label>
+    <%- nodeChecks("new", []) %>
+    <div class="row"><button class="btn big">Create group</button></div>
+  </form>
+</section>
+<%- include("partials/foot") %>

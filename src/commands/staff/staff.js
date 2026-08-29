@@ -11,7 +11,7 @@ export default {
   guildOnly: true,
   defer: true,
   aliases: ["team"],
-  check: erlcStaff,
+  permission: "erlc.read",
   ratelimit: { scope: "guild", uses: 4, per: 10_000 },
   async execute(ctx) {
     const cfg = ctx.config;

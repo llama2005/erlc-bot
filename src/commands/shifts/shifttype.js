@@ -9,7 +9,7 @@ export default {
   guildOnly: true,
   ephemeral: true,
   aliases: ["shifttypes"],
-  check: manageGuild,
+  permission: "config",
   subcommands: {
     list: {
       description: "List shift types.",

@@ -20,6 +20,7 @@ import {
 } from "../src/lib/cases.js";
 import { leaderboard, userShiftStats, adjustShiftTime, listActiveShifts } from "../src/lib/shifts.js";
 import { listPendingBanRequests, getBanRequest, resolveBanRequest } from "../src/lib/banRequests.js";
+import { NODES, getPermGroups, upsertPermGroup, deletePermGroup } from "../src/lib/permissions.js";
 import { erlc, ErlcError } from "../src/lib/erlc.js";
 import { formatDuration } from "../src/lib/util.js";
 import * as d from "./discord.js";
@@ -191,6 +192,35 @@ app.post("/dashboard/:guildId/shifts/adjust", requireAuth, requireGuildAdmin, as
   const ms = Math.abs(Number(minutes) || 0) * 60000;
   if (userId && ms) await adjustShiftTime(req.guild.id, userId.trim(), direction === "remove" ? -ms : ms);
   res.redirect(`/dashboard/${req.guild.id}/shifts`);
+});
+
+// ---- permissions ----
+app.get("/dashboard/:guildId/permissions", requireAuth, requireGuildAdmin, async (req, res) => {
+  const [groups, roles] = await Promise.all([
+    getPermGroups(req.guild.id),
+    d.getGuildRoles(req.guild.id).catch(() => []),
+  ]);
+  res.render("permissions", {
+    user: req.user,
+    guild: req.guild,
+    cfg: req.cfg,
+    groups,
+    roles: roles.filter((r) => r.name !== "@everyone" && !r.managed).sort((a, b) => b.position - a.position),
+    nodes: NODES,
+    tab: "permissions",
+  });
+});
+
+app.post("/dashboard/:guildId/permissions", requireAuth, requireGuildAdmin, async (req, res) => {
+  const { roleId, name } = req.body;
+  const nodes = [].concat(req.body.nodes || []).filter((n) => n === "*" || n in NODES);
+  if (roleId && name) await upsertPermGroup(req.guild.id, roleId, name.slice(0, 40), nodes);
+  res.redirect(`/dashboard/${req.guild.id}/permissions`);
+});
+
+app.post("/dashboard/:guildId/permissions/:roleId/delete", requireAuth, requireGuildAdmin, async (req, res) => {
+  await deletePermGroup(req.guild.id, req.params.roleId);
+  res.redirect(`/dashboard/${req.guild.id}/permissions`);
 });
 
 // ---- ban requests ----
