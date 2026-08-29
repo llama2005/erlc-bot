@@ -16,7 +16,8 @@ export const config = {
   links: {
     support: env("SUPPORT_SERVER_URL"),
     docs: env("DOCS_URL"),
-    dashboard: env("DASHBOARD_URL"),
+    // Render injects RENDER_EXTERNAL_URL automatically; use it if DASHBOARD_URL isn't set.
+    dashboard: env("DASHBOARD_URL") || env("RENDER_EXTERNAL_URL"),
   },
 
   discord: {

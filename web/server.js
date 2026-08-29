@@ -36,8 +36,9 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use("/static", express.static(path.join(here, "public")));
 
-const BASE = config.links.dashboard || `http://localhost:${config.web.port}`;
-const REDIRECT = `${BASE.replace(/\/$/, "")}/auth/callback`;
+const BASE = (config.links.dashboard || `http://localhost:${config.web.port}`).replace(/\/$/, "");
+const REDIRECT = `${BASE}/auth/callback`;
+console.log(`OAuth redirect URI: ${REDIRECT}  ← this must be in the Discord app's OAuth2 → Redirects`);
 
 app.locals.avatarUrl = d.avatarUrl;
 app.locals.guildIconUrl = d.guildIconUrl;
