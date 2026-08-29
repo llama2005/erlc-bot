@@ -6,7 +6,7 @@ import crypto from "node:crypto";
 
 import { config, requireConfig } from "../src/config.js";
 import { initSchema } from "../src/lib/pg.js";
-import { getGuildConfig, ensureGuildConfig, setGuildConfig } from "../src/lib/guildConfig.js";
+import { refreshGuildConfig, setGuildConfig, startConfigSync } from "../src/lib/guildConfig.js";
 import { getBotGuild, listBotGuilds } from "../src/lib/botGuilds.js";
 import {
   getRecentCases,
@@ -27,6 +27,7 @@ import { setSession, clearSession, readSession, requireAuth } from "./auth.js";
 
 requireConfig("DATABASE_URL", "DISCORD_TOKEN", "DISCORD_CLIENT_ID", "DISCORD_CLIENT_SECRET", "SESSION_SECRET");
 await initSchema();
+await startConfigSync().catch((e) => console.error("config sync setup failed:", e.message));
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -100,7 +101,7 @@ async function requireGuildAdmin(req, res, next) {
     return res.status(403).render("error", { user: req.user, message: "You don't have Manage Server in that guild." });
   const bg = await getBotGuild(guildId);
   if (!bg) return res.status(404).render("error", { user: req.user, message: "The bot isn't in that server yet." });
-  await ensureGuildConfig(guildId);
+  req.cfg = await refreshGuildConfig(guildId); // always fresh from the DB for the dashboard
   req.guild = { id: guildId, name: bg.name, icon: bg.icon };
   next();
 }
@@ -115,7 +116,7 @@ app.get("/dashboard/:guildId", requireAuth, requireGuildAdmin, async (req, res) 
   res.render("guild", {
     user: req.user,
     guild: req.guild,
-    cfg: getGuildConfig(req.guild.id),
+    cfg: req.cfg,
     channels: channels.filter((c) => c.type === 0 || c.type === 5).sort((a, b) => a.position - b.position),
     roles: roles.filter((r) => r.name !== "@everyone").sort((a, b) => b.position - a.position),
     modules: MODULES,
@@ -204,7 +205,7 @@ app.post("/dashboard/:guildId/banreqs/:id/:decision", requireAuth, requireGuildA
   if (request && request.status === "pending") {
     if (req.params.decision === "approve") {
       await resolveBanRequest(id, "approved", req.user.id);
-      const cfg = getGuildConfig(req.guild.id);
+      const cfg = req.cfg;
       const key = cfg.erlcKey || config.erlc.devKey;
       let executed = true;
       try {

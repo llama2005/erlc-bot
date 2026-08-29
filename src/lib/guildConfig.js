@@ -49,8 +49,16 @@ export async function warmGuildConfigs() {
 /** Ensure one guild is in the cache (call before handling its interactions). */
 export async function ensureGuildConfig(guildId) {
   if (!guildId || cache.has(guildId)) return;
+  await refreshGuildConfig(guildId);
+}
+
+/** Force a reload from the database (use where you need guaranteed-fresh data, e.g. the dashboard). */
+export async function refreshGuildConfig(guildId) {
+  if (!guildId) return defaults(null);
   const row = await one("SELECT * FROM guild_config WHERE guild_id = $1", [guildId]);
-  cache.set(guildId, row ? hydrate(row) : defaults(guildId));
+  const cfg = row ? hydrate(row) : defaults(guildId);
+  cache.set(guildId, cfg);
+  return cfg;
 }
 
 /** Synchronous — reads the cache (defaults if the guild isn't loaded yet). */
