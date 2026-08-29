@@ -1,0 +1,26 @@
+<%- include("partials/head", { title: "Ban requests · " + guild.name }) %>
+<%- include("partials/guildnav") %>
+
+<h2>Pending ban requests — <%= requests.length %></h2>
+<div class="cards">
+  <% requests.forEach(function(r){ %>
+    <div class="card wide">
+      <div class="card-h">
+        <a href="https://www.roblox.com/users/<%= r.roblox_id %>/profile" target="_blank" rel="noopener"><%= r.roblox_name %></a>
+        <span class="muted mono"><%= r.roblox_id %></span>
+      </div>
+      <p><strong>Reason:</strong> <%= r.reason || "—" %></p>
+      <p class="muted">Requested by <span class="mono"><%= r.requested_by %></span> · <%= fmtDate(r.created_at) %></p>
+      <div class="row">
+        <form method="post" action="/dashboard/<%= guild.id %>/banreqs/<%= r.id %>/approve" onsubmit="return confirm('Approve and ban <%= r.roblox_name %>?')">
+          <button class="btn">Approve &amp; ban</button>
+        </form>
+        <form method="post" action="/dashboard/<%= guild.id %>/banreqs/<%= r.id %>/deny">
+          <button class="btn ghost">Deny</button>
+        </form>
+      </div>
+    </div>
+  <% }) %>
+  <% if (!requests.length) { %><p class="muted">No pending requests.</p><% } %>
+</div>
+<%- include("partials/foot") %>

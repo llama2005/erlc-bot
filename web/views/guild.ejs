@@ -1,0 +1,65 @@
+<%- include("partials/head", { title: guild.name }) %>
+<%- include("partials/guildnav") %>
+
+<% if (saved) { %><div class="flash">Settings saved.</div><% } %>
+
+<%
+function chanSelect(name, selected) {
+  let h = `<select name="${name}"><option value="">— none —</option>`;
+  channels.forEach(c => { h += `<option value="${c.id}"${c.id === selected ? " selected" : ""}>#${c.name}</option>`; });
+  return h + "</select>";
+}
+function roleSelect(name, selected) {
+  let h = `<select name="${name}"><option value="">— none —</option>`;
+  roles.forEach(r => { h += `<option value="${r.id}"${r.id === selected ? " selected" : ""}>@${r.name}</option>`; });
+  return h + "</select>";
+}
+%>
+
+<form method="post" action="/dashboard/<%= guild.id %>" class="settings">
+  <section>
+    <h2>General</h2>
+    <label>Prefix <input type="text" name="prefix" value="<%= cfg.prefix %>" maxlength="5" size="4"></label>
+    <label class="check"><input type="checkbox" name="aiEnabled" <%= cfg.aiEnabled ? "checked" : "" %>> AI command &amp; @mention replies</label>
+    <label class="check"><input type="checkbox" name="reasonRequired" <%= cfg.reasonRequired ? "checked" : "" %>> Require a reason on every moderation action</label>
+  </section>
+
+  <section>
+    <h2>Log channels</h2>
+    <label>Moderation cases <%- chanSelect("modlogChannel", cfg.modlogChannel) %></label>
+    <label>Bot command usage <%- chanSelect("commandLogChannel", cfg.commandLogChannel) %></label>
+    <label>Ban requests <%- chanSelect("banreqChannel", cfg.banreqChannel) %></label>
+    <label>ER:LC joins / leaves <%- chanSelect("joinLogChannel", cfg.joinLogChannel) %></label>
+    <label>ER:LC kill logs <%- chanSelect("killLogChannel", cfg.killLogChannel) %></label>
+    <label>ER:LC in-game commands <%- chanSelect("ingameLogChannel", cfg.ingameLogChannel) %></label>
+    <label>ER:LC mod calls (pings staff) <%- chanSelect("modcallLogChannel", cfg.modcallLogChannel) %></label>
+    <label>Session (SSU/SSD) announcements <%- chanSelect("sessionChannel", cfg.sessionChannel) %></label>
+  </section>
+
+  <section>
+    <h2>Roles</h2>
+    <label>Staff — ER:LC / moderation / shift / session commands <%- roleSelect("erlcStaffRole", cfg.erlcStaffRole) %></label>
+    <label>Admin — approve ban requests, shift admin, void others' cases <%- roleSelect("erlcAdminRole", cfg.erlcAdminRole) %></label>
+    <label>On-duty — auto-assigned while clocked in <%- roleSelect("shiftRole", cfg.shiftRole) %></label>
+    <label>Session ping — pinged on SSU/SSD <%- roleSelect("sessionPingRole", cfg.sessionPingRole) %></label>
+  </section>
+
+  <section>
+    <h2>ER:LC API key</h2>
+    <p class="muted">Server-Key from the ER:LC private server settings. Leave blank to keep the current one.</p>
+    <label>New key <input type="password" name="erlcKey" placeholder="<%= cfg.erlcKey ? '•••••••• (set)' : 'not set' %>" autocomplete="off"></label>
+    <% if (cfg.erlcKey) { %><label class="check"><input type="checkbox" name="clearErlcKey"> Remove the current key</label><% } %>
+  </section>
+
+  <section>
+    <h2>Disabled modules</h2>
+    <div class="modgrid">
+      <% modules.forEach(function(m){ %>
+        <label class="check"><input type="checkbox" name="disabledModules" value="<%= m %>" <%= cfg.disabledModules.includes(m) ? "checked" : "" %>> <%= m %></label>
+      <% }) %>
+    </div>
+  </section>
+
+  <button type="submit" class="btn big">Save settings</button>
+</form>
+<%- include("partials/foot") %>

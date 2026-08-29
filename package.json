@@ -1,0 +1,27 @@
+{
+  "name": "discord-ai-bot",
+  "version": "1.0.0",
+  "description": "Modular Discord command bot (slash + prefix) with typed args, rate limiting, per-guild config, and a Claude-powered AI command.",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "bot": "node src/index.js",
+    "web": "node web/server.js",
+    "dev": "node --watch src/index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.122.0",
+    "better-sqlite3": "^13.0.3",
+    "cookie-parser": "^1.4.7",
+    "discord.js": "^14.27.0",
+    "dotenv": "^17.4.2",
+    "ejs": "^6.0.1",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "pg": "^8.23.0"
+  }
+}

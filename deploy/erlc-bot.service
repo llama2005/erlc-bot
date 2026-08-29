@@ -1,0 +1,26 @@
+[Unit]
+Description=erlc-bot (ER:LC / Discord moderation bot)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=bot
+WorkingDirectory=/home/bot/erlc-bot
+ExecStart=/usr/bin/node src/index.js
+Restart=always
+RestartSec=5
+TimeoutStopSec=15
+KillSignal=SIGTERM
+Environment=NODE_ENV=production
+# the app reads .env via dotenv; EnvironmentFile is a belt-and-suspenders
+EnvironmentFile=-/home/bot/erlc-bot/.env
+
+# hardening (bot only makes outbound connections)
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

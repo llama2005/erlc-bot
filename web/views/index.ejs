@@ -1,0 +1,14 @@
+<%- include("partials/head", { title: "Home" }) %>
+<section class="hero">
+  <h1>ER:LC + Discord moderation bot</h1>
+  <p>Cases, shifts, account linking, ban requests, and automatic in-game logging — configurable per server.</p>
+  <p class="cta">
+    <% if (user) { %>
+      <a href="/dashboard" class="btn big">Open dashboard</a>
+    <% } else { %>
+      <a href="/auth/login" class="btn big">Log in with Discord</a>
+    <% } %>
+    <a href="<%= inviteUrl %>" class="btn big ghost">Add to your server</a>
+  </p>
+</section>
+<%- include("partials/foot") %>

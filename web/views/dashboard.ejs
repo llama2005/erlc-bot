@@ -1,0 +1,20 @@
+<%- include("partials/head", { title: "Dashboard" }) %>
+<h1>Your servers</h1>
+<p class="muted">Servers where you have <strong>Manage Server</strong>.</p>
+<div class="cards">
+  <% guilds.forEach(function(g){ %>
+    <div class="card <%= g.botIn ? '' : 'dim' %>">
+      <div class="card-h">
+        <% if (guildIconUrl(g)) { %><img src="<%= guildIconUrl(g) %>" alt=""><% } else { %><div class="noicon"><%= g.name[0] %></div><% } %>
+        <span><%= g.name %></span>
+      </div>
+      <% if (g.botIn) { %>
+        <a href="/dashboard/<%= g.id %>" class="btn">Manage</a>
+      <% } else { %>
+        <a href="<%= inviteUrl %>&guild_id=<%= g.id %>" class="btn ghost">Add bot</a>
+      <% } %>
+    </div>
+  <% }) %>
+  <% if (!guilds.length) { %><p class="muted">No servers with Manage Server found.</p><% } %>
+</div>
+<%- include("partials/foot") %>

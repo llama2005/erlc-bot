@@ -1,0 +1,181 @@
+import pg from "pg";
+import { config } from "../config.js";
+
+// epoch-ms BIGINTs come back as strings by default — parse to Number.
+pg.types.setTypeParser(20, (v) => (v === null ? null : Number(v)));
+
+// Strip sslmode/channel_binding query params — we set `ssl` explicitly below, and
+// pg v8 prints a deprecation warning when it sees sslmode in the connection string.
+const rawUrl = config.databaseUrl || "";
+const cleanUrl = rawUrl.replace(/([?&])(sslmode|channel_binding)=[^&]*/g, "$1").replace(/[?&]$/, "");
+const isLocal = /@(localhost|127\.0\.0\.1)/.test(rawUrl);
+
+export const pool = new pg.Pool({
+  connectionString: cleanUrl,
+  ssl: isLocal || !rawUrl ? false : { rejectUnauthorized: false },
+  max: Number(process.env.PG_POOL_MAX || 10),
+});
+
+pool.on("error", (err) => console.error("pg pool error:", err.message));
+
+export const query = (text, params) => pool.query(text, params);
+export const one = async (text, params) => (await pool.query(text, params)).rows[0] ?? null;
+export const many = async (text, params) => (await pool.query(text, params)).rows;
+
+export async function tx(fn) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const result = await fn(client);
+    await client.query("COMMIT");
+    return result;
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => {});
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+const SCHEMA = `
+  CREATE TABLE IF NOT EXISTS guild_config (
+    guild_id            TEXT PRIMARY KEY,
+    prefix              TEXT,
+    disabled_commands   TEXT[] NOT NULL DEFAULT '{}',
+    disabled_modules    TEXT[] NOT NULL DEFAULT '{}',
+    modlog_channel      TEXT,
+    command_log_channel TEXT,
+    ai_enabled          BOOLEAN NOT NULL DEFAULT true,
+    reason_required     BOOLEAN NOT NULL DEFAULT false,
+    erlc_key            TEXT,
+    erlc_staff_role     TEXT,
+    erlc_admin_role     TEXT,
+    shift_role          TEXT,
+    banreq_channel      TEXT,
+    join_log_channel    TEXT,
+    kill_log_channel    TEXT,
+    ingame_log_channel  TEXT,
+    modcall_log_channel TEXT,
+    session_channel     TEXT,
+    session_ping_role   TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS guild_counters (
+    guild_id  TEXT PRIMARY KEY,
+    next_case BIGINT NOT NULL DEFAULT 1
+  );
+
+  CREATE TABLE IF NOT EXISTS mod_cases (
+    guild_id      TEXT NOT NULL,
+    case_number   BIGINT NOT NULL,
+    platform      TEXT NOT NULL,
+    subject_id    TEXT NOT NULL,
+    subject_name  TEXT NOT NULL,
+    type          TEXT NOT NULL,
+    reason        TEXT,
+    duration_ms   BIGINT,
+    moderator_id  TEXT NOT NULL,
+    moderator_tag TEXT,
+    created_at    BIGINT NOT NULL,
+    executed      BOOLEAN NOT NULL DEFAULT true,
+    voided        BOOLEAN NOT NULL DEFAULT false,
+    voided_by     TEXT,
+    voided_reason TEXT,
+    PRIMARY KEY (guild_id, case_number)
+  );
+  CREATE INDEX IF NOT EXISTS idx_cases_subject ON mod_cases (guild_id, platform, subject_id);
+  CREATE INDEX IF NOT EXISTS idx_cases_recent ON mod_cases (guild_id, created_at DESC);
+
+  CREATE TABLE IF NOT EXISTS mod_types (
+    guild_id   TEXT NOT NULL,
+    name       TEXT NOT NULL,
+    is_ban     BOOLEAN NOT NULL DEFAULT false,
+    ingame_cmd TEXT,
+    PRIMARY KEY (guild_id, name)
+  );
+
+  CREATE TABLE IF NOT EXISTS roblox_links (
+    discord_id  TEXT PRIMARY KEY,
+    roblox_id   TEXT NOT NULL,
+    roblox_name TEXT NOT NULL,
+    linked_at   BIGINT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_roblox_links_roblox ON roblox_links (roblox_id);
+
+  CREATE TABLE IF NOT EXISTS shift_types (
+    guild_id TEXT NOT NULL,
+    name     TEXT NOT NULL,
+    PRIMARY KEY (guild_id, name)
+  );
+
+  CREATE TABLE IF NOT EXISTS shifts (
+    id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    guild_id    TEXT NOT NULL,
+    user_id     TEXT NOT NULL,
+    shift_type  TEXT NOT NULL DEFAULT 'default',
+    started_at  BIGINT NOT NULL,
+    ended_at    BIGINT,
+    duration_ms BIGINT
+  );
+  CREATE INDEX IF NOT EXISTS idx_shifts_active ON shifts (guild_id, ended_at);
+  CREATE INDEX IF NOT EXISTS idx_shifts_user ON shifts (guild_id, user_id, started_at);
+
+  CREATE TABLE IF NOT EXISTS ban_requests (
+    id           BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    guild_id     TEXT NOT NULL,
+    roblox_id    TEXT NOT NULL,
+    roblox_name  TEXT NOT NULL,
+    reason       TEXT,
+    requested_by TEXT NOT NULL,
+    status       TEXT NOT NULL DEFAULT 'pending',
+    resolved_by  TEXT,
+    message_id   TEXT,
+    channel_id   TEXT,
+    created_at   BIGINT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_banreq_guild ON ban_requests (guild_id, status);
+
+  CREATE TABLE IF NOT EXISTS erlc_cursor (
+    guild_id TEXT NOT NULL,
+    log_type TEXT NOT NULL,
+    last_ts  BIGINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (guild_id, log_type)
+  );
+
+  CREATE TABLE IF NOT EXISTS bot_guilds (
+    guild_id     TEXT PRIMARY KEY,
+    name         TEXT,
+    icon         TEXT,
+    member_count INTEGER,
+    owner_id     TEXT,
+    updated_at   BIGINT NOT NULL
+  );
+`;
+
+export async function initSchema() {
+  await pool.query(SCHEMA);
+}
+
+/**
+ * Subscribe to a Postgres NOTIFY channel on a dedicated connection.
+ * Reconnects automatically if the connection drops.
+ */
+export async function listen(channel, handler) {
+  const connect = async () => {
+    const client = new pg.Client({ connectionString: cleanUrl, ssl: isLocal || !rawUrl ? false : { rejectUnauthorized: false } });
+    client.on("notification", (msg) => {
+      if (msg.channel === channel) handler(msg.payload);
+    });
+    client.on("error", (err) => {
+      console.error(`LISTEN ${channel} error:`, err.message);
+      client.end().catch(() => {});
+      setTimeout(connect, 3000);
+    });
+    await client.connect();
+    await client.query(`LISTEN ${channel}`);
+    return client;
+  };
+  return connect();
+}
+
+export const notify = (channel, payload) => pool.query("SELECT pg_notify($1, $2)", [channel, String(payload)]);

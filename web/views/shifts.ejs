@@ -1,0 +1,35 @@
+<%- include("partials/head", { title: "Shifts · " + guild.name }) %>
+<%- include("partials/guildnav") %>
+
+<h2>On duty now — <%= active.length %></h2>
+<ul class="plain">
+  <% active.forEach(function(s){ %>
+    <li><span class="mono"><%= s.user_id %></span> — <%= formatDuration(Date.now() - Number(s.started_at)) %> (<%= s.shift_type %>)</li>
+  <% }) %>
+  <% if (!active.length) { %><li class="muted">nobody</li><% } %>
+</ul>
+
+<h2>Leaderboard
+  <form method="get" class="inline">
+    last <input type="number" name="days" value="<%= days %>" min="1" max="90" size="3"> days
+    <button class="btn sm">Go</button>
+  </form>
+</h2>
+<table class="grid">
+  <thead><tr><th>#</th><th>User ID</th><th>Time</th><th>Sessions</th></tr></thead>
+  <tbody>
+  <% board.forEach(function(r, i){ %>
+    <tr><td><%= i + 1 %></td><td class="mono"><%= r.user_id %></td><td><%= formatDuration(Number(r.total)) %></td><td><%= r.sessions %></td></tr>
+  <% }) %>
+  <% if (!board.length) { %><tr><td colspan="4" class="muted">No completed shifts in this window.</td></tr><% } %>
+  </tbody>
+</table>
+
+<h2>Adjust time</h2>
+<form method="post" action="/dashboard/<%= guild.id %>/shifts/adjust" class="inline">
+  <input type="text" name="userId" placeholder="Discord user ID" required>
+  <select name="direction"><option value="add">add</option><option value="remove">remove</option></select>
+  <input type="number" name="minutes" placeholder="minutes" min="1" required>
+  <button class="btn">Apply</button>
+</form>
+<%- include("partials/foot") %>

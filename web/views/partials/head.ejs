@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title><%= typeof title !== "undefined" ? title + " · " : "" %>Bot Dashboard</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="topbar">
+  <a href="/" class="brand">ER:LC Bot</a>
+  <nav>
+    <% if (typeof user !== "undefined" && user) { %>
+      <a href="/dashboard">Dashboard</a>
+      <span class="me"><img src="<%= avatarUrl(user) %>" alt=""> <%= user.username %></span>
+      <a href="/auth/logout">Log out</a>
+    <% } else { %>
+      <a href="/auth/login" class="btn">Log in with Discord</a>
+    <% } %>
+  </nav>
+</header>
+<main>

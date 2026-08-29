@@ -1,0 +1,56 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+# Deploy: push to GitHub → Render → New → Blueprint → pick the repo.
+# Database: create a free Postgres at neon.tech and paste its URL as DATABASE_URL
+# on BOTH services (Render → each service → Environment).
+
+services:
+  # --- the Discord bot (no inbound HTTP) ---
+  - type: worker
+    name: erlc-bot
+    runtime: node
+    plan: starter # workers need a paid plan; Starter gets static outbound IPs
+    region: oregon
+    buildCommand: npm ci --omit=dev
+    startCommand: node src/index.js
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: DISCORD_TOKEN
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ERLC_KEY
+        sync: false
+      - key: DEV_GUILD_ID
+        sync: false
+      - key: OWNER_IDS
+        sync: false
+
+  # --- the web dashboard ---
+  - type: web
+    name: erlc-bot-dashboard
+    runtime: node
+    plan: starter
+    region: oregon
+    buildCommand: npm ci --omit=dev
+    startCommand: node web/server.js
+    autoDeploy: true
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: DISCORD_TOKEN
+        sync: false
+      - key: DISCORD_CLIENT_ID
+        sync: false
+      - key: DISCORD_CLIENT_SECRET
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: DASHBOARD_URL
+        sync: false # set to the dashboard's own https URL once Render assigns it

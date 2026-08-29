@@ -1,0 +1,53 @@
+<%- include("partials/head", { title: "Cases · " + guild.name }) %>
+<%- include("partials/guildnav") %>
+
+<form method="get" class="searchbar">
+  <input type="text" name="q" value="<%= q %>" placeholder="Case number…">
+  <button class="btn">Search</button>
+  <% if (q) { %><a href="/dashboard/<%= guild.id %>/cases" class="btn ghost">Clear</a><% } %>
+</form>
+
+<table class="grid">
+  <thead><tr><th>#</th><th>Type</th><th>Subject</th><th>Reason</th><th>Moderator</th><th>When</th><th></th></tr></thead>
+  <tbody>
+  <% cases.forEach(function(c){ %>
+    <tr class="<%= c.voided ? 'voided' : '' %>">
+      <td>#<%= c.case_number %></td>
+      <td><%= c.type %><%= c.platform === 'discord' ? ' (dc)' : '' %></td>
+      <td>
+        <% if (c.platform === 'roblox') { %>
+          <a href="https://www.roblox.com/users/<%= c.subject_id %>/profile" target="_blank" rel="noopener"><%= c.subject_name %></a>
+        <% } else { %><%= c.subject_name %><% } %>
+      </td>
+      <td class="reason"><%= c.reason || "—" %></td>
+      <td class="mono"><%= c.moderator_id %></td>
+      <td class="muted"><%= fmtDate(c.created_at) %></td>
+      <td class="actions">
+        <% if (!c.voided) { %>
+          <details>
+            <summary>edit</summary>
+            <form method="post" action="/dashboard/<%= guild.id %>/cases/<%= c.case_number %>/reason">
+              <input type="text" name="reason" value="<%= c.reason || '' %>" placeholder="new reason">
+              <button class="btn sm">Save reason</button>
+            </form>
+            <form method="post" action="/dashboard/<%= guild.id %>/cases/<%= c.case_number %>/type">
+              <select name="type">
+                <% (c.platform === 'roblox' ? ROBLOX_TYPES : DISCORD_TYPES).forEach(function(t){ %>
+                  <option value="<%= t %>" <%= t === c.type ? 'selected' : '' %>><%= t %></option>
+                <% }) %>
+              </select>
+              <button class="btn sm">Change type</button>
+            </form>
+            <form method="post" action="/dashboard/<%= guild.id %>/cases/<%= c.case_number %>/void" onsubmit="return confirm('Void case #<%= c.case_number %>?')">
+              <input type="text" name="reason" placeholder="void reason">
+              <button class="btn sm danger">Void</button>
+            </form>
+          </details>
+        <% } else { %><span class="muted">voided</span><% } %>
+      </td>
+    </tr>
+  <% }) %>
+  <% if (!cases.length) { %><tr><td colspan="7" class="muted">No cases.</td></tr><% } %>
+  </tbody>
+</table>
+<%- include("partials/foot") %>
