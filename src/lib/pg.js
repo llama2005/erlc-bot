@@ -4,10 +4,22 @@ import { config } from "../config.js";
 // epoch-ms BIGINTs come back as strings by default — parse to Number.
 pg.types.setTypeParser(20, (v) => (v === null ? null : Number(v)));
 
+// Strip whitespace, surrounding quotes, and a pasted "DATABASE_URL=" prefix.
+const rawUrl = (config.databaseUrl || "")
+  .trim()
+  .replace(/^["']|["']$/g, "")
+  .replace(/^DATABASE_URL\s*=\s*/i, "");
+
+if (rawUrl && !/^postgres(ql)?:\/\//i.test(rawUrl)) {
+  throw new Error(
+    `DATABASE_URL doesn't look like a Postgres connection string (got "${rawUrl.slice(0, 24)}…"). ` +
+      `It must start with postgresql:// — copy the full string from Neon (Dashboard → Connect).`,
+  );
+}
+
 // Strip sslmode/channel_binding query params — we set `ssl` explicitly below, and
 // pg v8 prints a deprecation warning when it sees sslmode in the connection string.
-const rawUrl = config.databaseUrl || "";
-const cleanUrl = rawUrl.replace(/([?&])(sslmode|channel_binding)=[^&]*/g, "$1").replace(/[?&]$/, "");
+const cleanUrl = rawUrl.replace(/([?&])(sslmode|channel_binding)=[^&]*/g, "$1").replace(/[?&]+$/, "");
 const isLocal = /@(localhost|127\.0\.0\.1)/.test(rawUrl);
 
 export const pool = new pg.Pool({
