@@ -4,9 +4,10 @@
 <% if (saved) { %><div class="flash">Settings saved.</div><% } %>
 
 <%
-function chanSelect(name, selected) {
+function chanSelect(name, selected, type) {
+  const list = type != null ? channels.filter(c => c.type === type) : channels.filter(c => c.type !== 4);
   let h = `<select name="${name}"><option value="">— none —</option>`;
-  channels.forEach(c => { h += `<option value="${c.id}"${c.id === selected ? " selected" : ""}>#${c.name}</option>`; });
+  list.forEach(c => { h += `<option value="${c.id}"${c.id === selected ? " selected" : ""}>${c.type === 4 ? "{1F4C1} " : "#"}${c.name}</option>`; });
   return h + "</select>";
 }
 function roleSelect(name, selected) {
@@ -35,6 +36,30 @@ function roleSelect(name, selected) {
     <label>ER:LC mod calls (pings staff) <%- chanSelect("modcallLogChannel", cfg.modcallLogChannel) %></label>
     <label>Session (SSU/SSD) announcements <%- chanSelect("sessionChannel", cfg.sessionChannel) %></label>
     <label>Staff-alert — off-duty command use is reported here <%- chanSelect("staffAlertChannel", cfg.staffAlertChannel) %></label>
+    <label>Leave-of-absence requests <%- chanSelect("loaChannel", cfg.loaChannel) %></label>
+    <label>Ban appeals <%- chanSelect("appealChannel", cfg.appealChannel) %></label>
+    <label>ER:LC server up/down alerts <%- chanSelect("statusChannel", cfg.statusChannel) %></label>
+    <label>Announcements (default for /announce) <%- chanSelect("announceChannel", cfg.announceChannel) %></label>
+    <label>Weekly staff-quota report <%- chanSelect("quotaChannel", cfg.quotaChannel) %></label>
+  </section>
+
+  <section>
+    <h2>In-game auto-log</h2>
+    <label class="check"><input type="checkbox" name="ingameAutolog" <%= cfg.ingameAutolog ? "checked" : "" %>> Turn <code>:kick</code> / <code>:ban</code> / <code>:jail</code> run in-game — and <code>:pm &lt;player&gt; &lt;trigger&gt; &lt;reason&gt;</code> — into logged cases</label>
+    <label>Warn trigger word (used in <code>:pm player <trigger> reason</code>) <input type="text" name="ingameWarnTrigger" value="<%= cfg.ingameWarnTrigger || 'warn' %>" maxlength="16" size="10"></label>
+  </section>
+
+  <section>
+    <h2>Staff quotas</h2>
+    <label>Weekly cases per staff (0 = off) <input type="number" name="weeklyCaseQuota" value="<%= cfg.weeklyCaseQuota || 0 %>" min="0" size="4"></label>
+    <label>Weekly shift-time per staff, in minutes (0 = off) <input type="number" name="weeklyShiftQuotaMin" value="<%= Math.round((cfg.weeklyShiftQuota || 0) / 60000) %>" min="0" size="5"></label>
+    <p class="muted">A report posts to the quota channel each week.</p>
+  </section>
+
+  <section>
+    <h2>Tickets</h2>
+    <label>Ticket category <%- chanSelect("ticketCategory", cfg.ticketCategory, 4) %></label>
+    <label>Ticket staff role <%- roleSelect("ticketStaffRole", cfg.ticketStaffRole) %></label>
   </section>
 
   <section>

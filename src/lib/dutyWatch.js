@@ -1,6 +1,7 @@
 import { EmbedBuilder } from "discord.js";
 import { getGuildConfig } from "./guildConfig.js";
 import { getActiveShift } from "./shifts.js";
+import { isOnLoa } from "./loa.js";
 import { resolveSendable } from "./modlog.js";
 import { COLORS } from "./style.js";
 
@@ -30,6 +31,7 @@ export async function reportOffDuty(client, { guild, userId, userTag, action, de
     if (guild.ownerId === userId) return; // the server owner is always "on duty"
 
     if (await getActiveShift(guild.id, userId)) return; // clocked in — fine
+    if (await isOnLoa(guild.id, userId)) return; // on approved leave — excused
 
     const { channel } = await resolveSendable(client, cfg.staffAlertChannel);
     if (!channel) return;

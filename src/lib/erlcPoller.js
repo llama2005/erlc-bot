@@ -1,10 +1,11 @@
 import { EmbedBuilder, time } from "discord.js";
 import { config } from "../config.js";
 import { one, query } from "./pg.js";
-import { erlc, splitPlayer } from "./erlc.js";
+import { erlc, splitPlayer, ErlcError } from "./erlc.js";
 import { getGuildConfig, ensureGuildConfig } from "./guildConfig.js";
-import { resolveChannel } from "./modlog.js";
+import { resolveChannel, resolveSendable } from "./modlog.js";
 import { getLinkByRoblox } from "./links.js";
+import { autologCommandEntries } from "./ingameAutolog.js";
 import { COLORS, EMOJI } from "./style.js";
 import { sleep } from "./util.js";
 
@@ -68,18 +69,61 @@ const JOBS = [
   ["modcall", "modcallLogChannel", (key) => erlc.modCalls(key)],
 ];
 
+async function checkServerStatus(client, guildId, key, cfg) {
+  if (!cfg.statusChannel) return null;
+  let server;
+  try {
+    server = await erlc.server(key);
+  } catch (e) {
+    if (e instanceof ErlcError && (e.code === 1001 || e.status === 502 || e.status === 522)) server = null;
+    else return null;
+  }
+  const online = !!server;
+  const players = server?.CurrentPlayers ?? null;
+  const prev = await one("SELECT online FROM erlc_status WHERE guild_id=$1", [guildId]);
+  await query(
+    "INSERT INTO erlc_status (guild_id, online, players, checked_at) VALUES ($1,$2,$3,$4) ON CONFLICT (guild_id) DO UPDATE SET online=EXCLUDED.online, players=EXCLUDED.players, checked_at=EXCLUDED.checked_at",
+    [guildId, online, players, Date.now()],
+  );
+  if (prev && prev.online !== null && prev.online !== online) {
+    const { channel } = await resolveSendable(client, cfg.statusChannel);
+    if (channel)
+      await channel
+        .send({
+          embeds: [
+            new EmbedBuilder()
+              .setColor(online ? COLORS.success : COLORS.danger)
+              .setTitle(online ? `${EMOJI.online} ER:LC server is back online` : `${EMOJI.offline} ER:LC server went offline`)
+              .setDescription(online && server ? `**${server.Name}** · ${server.CurrentPlayers}/${server.MaxPlayers} · join \`${server.JoinKey}\`` : "The API can't reach the private server.")
+              .setTimestamp(),
+          ],
+        })
+        .catch(() => {});
+  }
+  return server;
+}
+
 async function pollGuild(client, guildId) {
   await ensureGuildConfig(guildId);
   const cfg = getGuildConfig(guildId);
   const key = cfg.erlcKey || config.erlc.devKey;
   if (!key) return;
-  if (!JOBS.some(([, field]) => cfg[field])) return; // nothing configured
+
+  const wantsLogs = JOBS.some(([, field]) => cfg[field]);
+  if (!wantsLogs && !cfg.ingameAutolog && !cfg.statusChannel) return; // nothing to do
+
+  await checkServerStatus(client, guildId, key, cfg).catch(() => {});
+
+  // players list — used for in-game auto-log target resolution
+  let players = [];
+  if (cfg.ingameLogChannel || cfg.ingameAutolog) players = await erlc.players(key).catch(() => []);
 
   for (const [type, field, fetch] of JOBS) {
     const channelId = cfg[field];
-    if (!channelId) continue;
-    const channel = await resolveChannel(client, channelId);
-    if (!channel) continue;
+    const autolog = type === "command" && cfg.ingameAutolog;
+    if (!channelId && !autolog) continue;
+    const channel = channelId ? await resolveChannel(client, channelId) : null;
+    if (!channelId && !autolog) continue;
 
     let entries;
     try {
@@ -102,9 +146,14 @@ async function pollGuild(client, guildId) {
       .sort((a, b) => a.Timestamp - b.Timestamp)
       .slice(-MAX_BURST);
 
-    for (const e of fresh) {
-      await channel.send(await FORMATTERS[type](e, cfg)).catch(() => {});
-      await sleep(250);
+    if (fresh.length) {
+      if (channel) {
+        for (const e of fresh) {
+          await channel.send(await FORMATTERS[type](e, cfg)).catch(() => {});
+          await sleep(250);
+        }
+      }
+      if (autolog) await autologCommandEntries(client, guildId, fresh, players).catch((e) => console.error("autolog:", e.message));
     }
     if (maxTs > cursor) await setCursor(guildId, type, maxTs);
     await sleep(400); // gentle spacing between endpoints

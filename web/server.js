@@ -107,7 +107,7 @@ async function requireGuildAdmin(req, res, next) {
   next();
 }
 
-const MODULES = ["general", "moderation", "discord", "erlc", "roblox", "connections", "shifts", "staff"];
+const MODULES = ["general", "moderation", "discord", "erlc", "roblox", "connections", "shifts", "staff", "utility"];
 
 app.get("/dashboard/:guildId", requireAuth, requireGuildAdmin, async (req, res) => {
   const [channels, roles] = await Promise.all([
@@ -118,7 +118,7 @@ app.get("/dashboard/:guildId", requireAuth, requireGuildAdmin, async (req, res) 
     user: req.user,
     guild: req.guild,
     cfg: req.cfg,
-    channels: channels.filter((c) => c.type === 0 || c.type === 5).sort((a, b) => a.position - b.position),
+    channels: channels.filter((c) => [0, 5, 4].includes(c.type)).sort((a, b) => a.position - b.position),
     roles: roles.filter((r) => r.name !== "@everyone").sort((a, b) => b.position - a.position),
     modules: MODULES,
     tab: "settings",
@@ -142,10 +142,21 @@ app.post("/dashboard/:guildId", requireAuth, requireGuildAdmin, async (req, res)
     modcallLogChannel: orNull(b.modcallLogChannel),
     sessionChannel: orNull(b.sessionChannel),
     staffAlertChannel: orNull(b.staffAlertChannel),
+    loaChannel: orNull(b.loaChannel),
+    appealChannel: orNull(b.appealChannel),
+    statusChannel: orNull(b.statusChannel),
+    announceChannel: orNull(b.announceChannel),
+    quotaChannel: orNull(b.quotaChannel),
+    ticketCategory: orNull(b.ticketCategory),
     erlcStaffRole: orNull(b.erlcStaffRole),
     erlcAdminRole: orNull(b.erlcAdminRole),
     shiftRole: orNull(b.shiftRole),
     sessionPingRole: orNull(b.sessionPingRole),
+    ticketStaffRole: orNull(b.ticketStaffRole),
+    ingameAutolog: b.ingameAutolog === "on",
+    ingameWarnTrigger: (b.ingameWarnTrigger || "warn").toLowerCase().replace(/[^a-z0-9_-]/g, "") || "warn",
+    weeklyCaseQuota: Math.max(0, parseInt(b.weeklyCaseQuota, 10) || 0),
+    weeklyShiftQuota: Math.max(0, parseInt(b.weeklyShiftQuotaMin, 10) || 0) * 60000,
     disabledModules: [].concat(b.disabledModules || []).filter(Boolean),
   };
   // only overwrite the ER:LC key when a new one is actually submitted

@@ -4,6 +4,7 @@ import { pool, initSchema } from "./lib/pg.js";
 import { CommandManager } from "./lib/CommandManager.js";
 import { getPublicIp } from "./lib/publicIp.js";
 import { startErlcPoller } from "./lib/erlcPoller.js";
+import { startScheduler } from "./lib/scheduler.js";
 import { warmGuildConfigs, ensureGuildConfig, startConfigSync } from "./lib/guildConfig.js";
 import { startPermSync } from "./lib/permissions.js";
 import { syncBotGuild, removeBotGuild, syncAllBotGuilds } from "./lib/botGuilds.js";
@@ -45,6 +46,7 @@ client.once(Events.ClientReady, async (c) => {
 
   await syncAllBotGuilds(c).catch((e) => console.error("botGuilds sync failed:", e.message));
   startErlcPoller(c);
+  startScheduler(c);
 });
 
 client.on(Events.GuildCreate, (guild) => {

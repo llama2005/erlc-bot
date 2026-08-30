@@ -171,11 +171,102 @@ const SCHEMA = `
     owner_id     TEXT,
     updated_at   BIGINT NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS loa (
+    id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    guild_id    TEXT NOT NULL,
+    user_id     TEXT NOT NULL,
+    reason      TEXT,
+    starts_at   BIGINT NOT NULL,
+    ends_at     BIGINT NOT NULL,
+    status      TEXT NOT NULL DEFAULT 'pending',
+    reviewed_by TEXT,
+    message_id  TEXT,
+    channel_id  TEXT,
+    created_at  BIGINT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_loa_lookup ON loa (guild_id, user_id, status);
+
+  CREATE TABLE IF NOT EXISTS appeals (
+    id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    guild_id    TEXT NOT NULL,
+    user_id     TEXT NOT NULL,
+    roblox_id   TEXT,
+    roblox_name TEXT,
+    reason      TEXT NOT NULL,
+    status      TEXT NOT NULL DEFAULT 'pending',
+    reviewed_by TEXT,
+    message_id  TEXT,
+    channel_id  TEXT,
+    created_at  BIGINT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_appeals_guild ON appeals (guild_id, status);
+
+  CREATE TABLE IF NOT EXISTS autohints (
+    id         BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    guild_id   TEXT NOT NULL,
+    message    TEXT NOT NULL,
+    interval_ms BIGINT NOT NULL,
+    next_at    BIGINT NOT NULL,
+    enabled    BOOLEAN NOT NULL DEFAULT true
+  );
+  CREATE INDEX IF NOT EXISTS idx_autohints_guild ON autohints (guild_id);
+
+  CREATE TABLE IF NOT EXISTS reminders (
+    id        BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    user_id   TEXT NOT NULL,
+    channel_id TEXT NOT NULL,
+    guild_id  TEXT,
+    text      TEXT NOT NULL,
+    due_at    BIGINT NOT NULL,
+    created_at BIGINT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_reminders_due ON reminders (due_at);
+
+  CREATE TABLE IF NOT EXISTS button_role_panels (
+    message_id TEXT PRIMARY KEY,
+    guild_id   TEXT NOT NULL,
+    channel_id TEXT NOT NULL,
+    roles      JSONB NOT NULL DEFAULT '[]'
+  );
+
+  CREATE TABLE IF NOT EXISTS tickets (
+    id         BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    guild_id   TEXT NOT NULL,
+    channel_id TEXT NOT NULL,
+    opener_id  TEXT NOT NULL,
+    subject    TEXT,
+    status     TEXT NOT NULL DEFAULT 'open',
+    created_at BIGINT NOT NULL,
+    closed_at  BIGINT,
+    closed_by  TEXT
+  );
+  CREATE INDEX IF NOT EXISTS idx_tickets_guild ON tickets (guild_id, status);
+
+  CREATE TABLE IF NOT EXISTS erlc_status (
+    guild_id  TEXT PRIMARY KEY,
+    online    BOOLEAN,
+    players   INTEGER,
+    checked_at BIGINT NOT NULL
+  );
 `;
 
 // Forward migrations for columns added after a guild's DB was first created.
 const MIGRATIONS = `
   ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS staff_alert_channel TEXT;
+  ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS loa_channel TEXT;
+  ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS appeal_channel TEXT;
+  ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS quota_channel TEXT;
+  ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS status_channel TEXT;
+  ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS announce_channel TEXT;
+  ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS ticket_category TEXT;
+  ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS ticket_staff_role TEXT;
+  ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS weekly_shift_quota BIGINT NOT NULL DEFAULT 0;
+  ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS weekly_case_quota INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS last_quota_report BIGINT NOT NULL DEFAULT 0;
+  ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS ingame_autolog BOOLEAN NOT NULL DEFAULT true;
+  ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS ingame_warn_trigger TEXT NOT NULL DEFAULT 'warn';
+  ALTER TABLE mod_cases ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'discord';
 `;
 
 export async function initSchema() {

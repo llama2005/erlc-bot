@@ -16,13 +16,25 @@ const SETTINGS = {
   "modcall-log": { field: "modcallLogChannel", kind: "channel", label: "Mod-call log" },
   "session-channel": { field: "sessionChannel", kind: "channel", label: "Session channel" },
   "staff-alert": { field: "staffAlertChannel", kind: "channel", label: "Staff-alert channel" },
+  "loa-channel": { field: "loaChannel", kind: "channel", label: "LOA channel" },
+  "appeal-channel": { field: "appealChannel", kind: "channel", label: "Appeal channel" },
+  "status-channel": { field: "statusChannel", kind: "channel", label: "Server status channel" },
+  "announce-channel": { field: "announceChannel", kind: "channel", label: "Announcement channel" },
+  "quota-channel": { field: "quotaChannel", kind: "channel", label: "Weekly quota report channel" },
+  "ticket-category": { field: "ticketCategory", kind: "channel", label: "Ticket category" },
   "erlc-key": { field: "erlcKey", kind: "secret", label: "ER:LC API key" },
   "erlc-role": { field: "erlcStaffRole", kind: "role", label: "ER:LC staff role" },
   "erlc-admin-role": { field: "erlcAdminRole", kind: "role", label: "ER:LC admin role" },
   "shift-role": { field: "shiftRole", kind: "role", label: "On-duty role" },
   "session-role": { field: "sessionPingRole", kind: "role", label: "Session ping role" },
+  "ticket-role": { field: "ticketStaffRole", kind: "role", label: "Ticket staff role" },
+  "ingame-autolog": { field: "ingameAutolog", kind: "bool", label: "In-game auto-log" },
+  "warn-trigger": { field: "ingameWarnTrigger", kind: "word", label: "In-game warn trigger word" },
+  "case-quota": { field: "weeklyCaseQuota", kind: "int", label: "Weekly case quota" },
+  "shift-quota": { field: "weeklyShiftQuota", kind: "duration", label: "Weekly shift-time quota" },
 };
-const NAMES = ["view", ...Object.keys(SETTINGS), "disable", "enable"];
+export const CONFIG_SETTING_NAMES = ["view", ...Object.keys(SETTINGS), "disable", "enable"];
+const NAMES = CONFIG_SETTING_NAMES;
 const CLEARWORDS = ["none", "off", "clear", "remove"];
 
 function toggleInList(list, value, on) {
@@ -41,7 +53,7 @@ export default {
   permission: "config",
   redactArgs: ["value"],
   args: [
-    { name: "setting", type: "string", required: false, description: "What to configure", choices: NAMES },
+    { name: "setting", type: "string", required: false, description: "What to configure", autocomplete: "configSettings" },
     { name: "value", type: "text", required: false, description: "New value / target (or 'none' to clear)" },
   ],
   async execute(ctx) {
@@ -151,8 +163,38 @@ export default {
           (id && (await ctx.client.channels.fetch(id).catch(() => null)));
         if (!channel || !channel.isTextBased?.() || channel.isDMBased?.())
           return reply("Give a text channel (mention or ID). It may be in another server the bot is in. Or `none`.");
+        // ticket-category expects a category channel (type 4)
+        if (spec.field === "ticketCategory" && channel.type !== 4)
+          return reply("Give a **category** channel for `ticket-category`.");
         await setGuildConfig(ctx.guild.id, { [spec.field]: channel.id });
         return reply(`${spec.label} set to <#${channel.id}>${channel.guildId !== ctx.guild.id ? " (external server)" : ""}.`);
+      }
+      case "word": {
+        if (clearing) {
+          await setGuildConfig(ctx.guild.id, { [spec.field]: SETTINGS[setting]?.field === "ingameWarnTrigger" ? "warn" : null });
+          return reply(`${spec.label} reset.`);
+        }
+        const w = value.toLowerCase().replace(/[^a-z0-9_-]/g, "");
+        if (!w) return reply("Give a single word.");
+        await setGuildConfig(ctx.guild.id, { [spec.field]: w });
+        return reply(`${spec.label} set to \`${w}\`.`);
+      }
+      case "int": {
+        const n = Number.parseInt(value, 10);
+        if (!Number.isFinite(n) || n < 0) return reply("Give a whole number (0 to disable).");
+        await setGuildConfig(ctx.guild.id, { [spec.field]: n });
+        return reply(`${spec.label} set to **${n}**${n === 0 ? " (disabled)" : ""}.`);
+      }
+      case "duration": {
+        const { parseDuration, formatDuration } = await import("../../lib/util.js");
+        if (clearing || value === "0") {
+          await setGuildConfig(ctx.guild.id, { [spec.field]: 0 });
+          return reply(`${spec.label} disabled.`);
+        }
+        const ms = parseDuration(value);
+        if (!ms) return reply("Give a duration like `3h` or `90m` (or `0` to disable).");
+        await setGuildConfig(ctx.guild.id, { [spec.field]: ms });
+        return reply(`${spec.label} set to \`${formatDuration(ms)}\`.`);
       }
       default:
         return reply("Unhandled setting.");

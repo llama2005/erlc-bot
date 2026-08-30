@@ -53,6 +53,15 @@ export const autocompleteProviders = {
       .map((t) => ({ name: t.is_ban ? `${t.name} (ban)` : t.name, value: t.name }));
   },
 
+  /** /config setting names. */
+  async configSettings(interaction, focused) {
+    const { CONFIG_SETTING_NAMES } = await import("../commands/config/config.js");
+    const q = String(focused || "").toLowerCase();
+    return CONFIG_SETTING_NAMES.filter((n) => !q || n.includes(q))
+      .slice(0, 25)
+      .map((n) => ({ name: n, value: n }));
+  },
+
   /** Permission nodes for /permgroup. */
   async permNodes(interaction, focused) {
     const { NODES } = await import("./permissions.js");

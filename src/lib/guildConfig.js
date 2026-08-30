@@ -24,6 +24,17 @@ const COLUMNS = {
   sessionChannel: { col: "session_channel", def: () => null },
   sessionPingRole: { col: "session_ping_role", def: () => null },
   staffAlertChannel: { col: "staff_alert_channel", def: () => null },
+  loaChannel: { col: "loa_channel", def: () => null },
+  appealChannel: { col: "appeal_channel", def: () => null },
+  quotaChannel: { col: "quota_channel", def: () => null },
+  statusChannel: { col: "status_channel", def: () => null },
+  announceChannel: { col: "announce_channel", def: () => null },
+  ticketCategory: { col: "ticket_category", def: () => null },
+  ticketStaffRole: { col: "ticket_staff_role", def: () => null },
+  weeklyShiftQuota: { col: "weekly_shift_quota", def: () => 0 },
+  weeklyCaseQuota: { col: "weekly_case_quota", def: () => 0 },
+  ingameAutolog: { col: "ingame_autolog", def: () => true },
+  ingameWarnTrigger: { col: "ingame_warn_trigger", def: () => "warn" },
 };
 
 function hydrate(row) {
