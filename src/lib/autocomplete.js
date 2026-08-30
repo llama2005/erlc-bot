@@ -77,6 +77,23 @@ export const autocompleteProviders = {
       .map((n) => ({ name: n === "*" ? "* (everything)" : n, value: n }));
   },
 
+  /** Suggests VSM `:` commands the invoker is allowed to run. */
+  async erlcCommands(interaction, focused) {
+    const { catalogByTier, TIER_RANK } = await import("./erlcCommands.js");
+    const { hasPermissionInteraction } = await import("./permissions.js");
+    const canOwner = !!interaction.memberPermissions?.has("ManageGuild") || !!interaction.client.ownerIds?.includes(interaction.user.id);
+    const canAdmin = canOwner || (await hasPermissionInteraction(interaction, "erlc.command"));
+    const maxRank = canOwner ? 3 : canAdmin ? 2 : 1;
+
+    const cat = catalogByTier();
+    const all = [...cat.mod, ...cat.admin, ...cat.owner].filter((e) => TIER_RANK[e.tier] <= maxRank);
+    const q = String(focused || "").replace(/^:+/, "").trim().split(/\s+/)[0].toLowerCase();
+    return all
+      .filter((e) => !q || e.name.startsWith(q))
+      .slice(0, 25)
+      .map((e) => ({ name: `:${e.name} ${e.usage}`.slice(0, 100).trim(), value: `${e.name} ` }));
+  },
+
   /** Suggests this guild's connected ER:LC servers. */
   async erlcServers(interaction, focused) {
     const { getServers } = await import("./erlcServers.js");

@@ -3,6 +3,9 @@ import { erlc, splitPlayer, ErlcError } from "../../lib/erlc.js";
 import { usersByIds, headshotUrl } from "../../lib/roblox.js";
 import { getLinkByRoblox } from "../../lib/links.js";
 import { getPublicIp } from "../../lib/publicIp.js";
+import { hasPermission } from "../../lib/permissions.js";
+import { resolveErlcCommand, catalogByTier, TIER_NODE } from "../../lib/erlcCommands.js";
+import { COLORS, ok, err } from "../../lib/style.js";
 import { erlcServerFor, erlcStaff, manageGuild, SERVER_ARG } from "./_shared.js";
 
 const EMBED = 0x2b6cb0;
@@ -326,16 +329,44 @@ export default {
     },
 
     command: {
-      description: "Run a raw in-game command (Manage Server only).",
+      description: "Run a validated in-game :command (leave blank to list them).",
       defer: true,
-      permission: "erlc.command",
-      args: [{ name: "command", type: "text", required: true, description: "e.g. :kill noah, :weather rain" }, SERVER_ARG],
+      permission: "erlc.message",
+      args: [
+        { name: "command", type: "text", required: false, description: "e.g. :hint welcome, :weather rain", autocomplete: "erlcCommands" },
+        SERVER_ARG,
+      ],
       ratelimit: { scope: "guild", uses: 1, per: 5000 },
       async execute(ctx) {
-        let cmd = ctx.args.command.trim();
-        if (!cmd.startsWith(":")) cmd = `:${cmd}`;
+        const reply = (m) => ctx.reply({ content: m, ephemeral: true });
+        const canOwner = ctx.permissions.has("ManageGuild") || ctx.isOwner;
+        const canAdmin = canOwner || (await hasPermission(ctx, "erlc.command"));
+
+        const raw = (ctx.args.command || "").trim().replace(/^:+/, "");
+        if (!raw) {
+          const cat = catalogByTier();
+          const fmt = (list) => list.map((e) => `\`:${e.name}\``).join(" ");
+          const embed = new EmbedBuilder().setColor(COLORS.primary).setTitle("ER:LC commands you can run");
+          embed.addFields({ name: "Mod", value: fmt(cat.mod) || "—" });
+          if (canAdmin) embed.addFields({ name: "Admin", value: fmt(cat.admin) || "—" });
+          if (canOwner) embed.addFields({ name: "Owner", value: fmt(cat.owner) || "—" });
+          embed.setFooter({ text: "Use /kick, /jail, /ban … for moderation — those log a case." });
+          return ctx.reply({ embeds: [embed], ephemeral: true });
+        }
+
+        const [name, ...rest] = raw.split(/\s+/);
+        const entry = resolveErlcCommand(name.toLowerCase());
+        if (!entry) return reply(err(`Unknown ER:LC command \`:${name}\`. Run \`/erlc command\` with no text for the list.`));
+        if (entry.redirect) return reply(err(`Use \`${entry.redirect}\` for that — it logs a case.`));
+        if (rest.length < entry.minArgs)
+          return reply(err(`\`:${entry.name}\` needs: \`:${entry.name} ${entry.usage}\`.`));
+
+        const allowed = entry.tier === "owner" ? canOwner : entry.tier === "admin" ? canAdmin : await hasPermission(ctx, TIER_NODE.mod);
+        if (!allowed) return reply(err(`\`:${entry.name}\` is an ${entry.tier}-tier command — you don't have permission for it.`));
+
+        const cmd = `:${entry.name}${rest.length ? ` ${rest.join(" ")}` : ""}`;
         await erlc.command(await requireKey(ctx), cmd);
-        await ctx.reply(`Ran \`${cmd}\` in-game.`);
+        await ctx.reply(ok(`Ran \`${cmd}\` in-game.`));
       },
     },
   },
