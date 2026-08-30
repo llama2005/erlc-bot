@@ -1,17 +1,18 @@
+<% var appName = (typeof botName !== "undefined" && botName) ? botName : "Scout"; %>
 <%- include("partials/head", { title: "Privacy Policy" }) %>
 <article class="legal">
   <h1>Privacy Policy</h1>
   <p class="muted">Last updated: <%= updated %></p>
 
   <p>
-    This policy explains what data <strong>ER:LC Bot</strong> ("the bot") stores when you add it
+    This policy explains what data <strong><%= appName %></strong> ("the bot") stores when you add it
     to a Discord server or use its dashboard, and how that data is handled.
   </p>
 
   <h2>What we store</h2>
   <ul>
     <li><strong>Server configuration</strong> — channel and role IDs you set, feature toggles, your
-      prefix, and the <strong>ER:LC private-server API key</strong> you provide via <code>/config erlc-key</code>
+      prefix, and the <strong>ER:LC private-server API key</strong> you provide via <code>/erlcserver add</code>
       or the dashboard. The key is stored so the bot can talk to your ER:LC server on your behalf.</li>
     <li><strong>Moderation records</strong> — cases created through the bot (warns, kicks, bans, jails,
       notes, ban requests, appeals): the target's Roblox and/or Discord ID and name, the moderator's

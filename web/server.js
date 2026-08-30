@@ -74,8 +74,10 @@ app.locals.ago = (ms) => {
   return `${Math.floor(s / 86400)}d ago`;
 };
 app.locals.who = (names, id) => (id ? names.get(String(id)) || `user …${String(id).slice(-4)}` : "—");
+app.locals.botName = config.botName;
 d.botIdentity().then((u) => {
   app.locals.botAvatar = d.botAvatarUrl(u) || "";
+  if (u?.username) app.locals.botName = u.username;
 });
 
 // Per-guild budget for dashboard-initiated ER:LC API calls, so one server's dashboard

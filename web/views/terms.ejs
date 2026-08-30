@@ -1,9 +1,10 @@
+<% var appName = (typeof botName !== "undefined" && botName) ? botName : "Scout"; %>
 <%- include("partials/head", { title: "Terms of Service" }) %>
 <article class="legal">
   <h1>Terms of Service</h1>
   <p class="muted">Last updated: <%= updated %></p>
 
-  <p>By adding <strong>ER:LC Bot</strong> to a Discord server or using its dashboard, you agree to these terms.</p>
+  <p>By adding <strong><%= appName %></strong> to a Discord server or using its dashboard, you agree to these terms.</p>
 
   <h2>Acceptable use</h2>
   <ul>

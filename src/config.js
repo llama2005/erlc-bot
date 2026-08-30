@@ -13,6 +13,9 @@ export const config = {
   // Register slash commands to this guild only (instant). Leave empty for global (~1h to propagate).
   devGuildId: env("DEV_GUILD_ID"),
 
+  // Display name for the dashboard / legal pages (the bot's Discord username is used where available).
+  botName: env("BOT_NAME", "Scout"),
+
   defaultPrefix: env("DEFAULT_PREFIX", "!"),
   ownerIds: env("OWNER_IDS").split(",").map((s) => s.trim()).filter(Boolean),
 

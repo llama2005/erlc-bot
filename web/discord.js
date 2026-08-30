@@ -163,7 +163,7 @@ export async function botIdentity() {
   try {
     _botUser = await bot("/users/@me");
   } catch {
-    _botUser = { id: config.discord.clientId, username: "ER:LC Bot", avatar: null };
+    _botUser = { id: config.discord.clientId, username: config.botName, avatar: null };
   }
   return _botUser;
 }
