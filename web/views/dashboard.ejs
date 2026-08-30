@@ -1,20 +1,29 @@
-<%- include("partials/head", { title: "Dashboard" }) %>
-<h1>Your servers</h1>
-<p class="muted">Servers where you have <strong>Manage Server</strong>.</p>
+<%- include("partials/head", { title: "Your servers" }) %>
+
+<div class="page-head">
+  <div>
+    <h1>Your servers</h1>
+    <div class="sub">Servers where you have <strong>Manage Server</strong>.</div>
+  </div>
+</div>
+
 <div class="cards">
   <% guilds.forEach(function(g){ %>
-    <div class="card <%= g.botIn ? '' : 'dim' %>">
-      <div class="card-h">
-        <% if (guildIconUrl(g)) { %><img src="<%= guildIconUrl(g) %>" alt=""><% } else { %><div class="noicon"><%= g.name[0] %></div><% } %>
-        <span><%= g.name %></span>
+    <div class="g-card <%= g.botIn ? '' : 'dim' %>">
+      <div class="h">
+        <% if (guildIconUrl(g)) { %><img src="<%= guildIconUrl(g) %>" alt=""><% } else { %><div class="noicon"><%= (g.name||'?')[0] %></div><% } %>
+        <b><%= g.name %></b>
       </div>
       <% if (g.botIn) { %>
-        <a href="/dashboard/<%= g.id %>" class="btn">Manage</a>
+        <a href="/dashboard/<%= g.id %>/overview" class="btn" style="width:100%">Manage</a>
       <% } else { %>
-        <a href="<%= inviteUrl %>&guild_id=<%= g.id %>" class="btn ghost">Add bot</a>
+        <a href="<%= inviteUrl %>&guild_id=<%= g.id %>" class="btn ghost" style="width:100%">Add bot</a>
       <% } %>
     </div>
   <% }) %>
-  <% if (!guilds.length) { %><p class="muted">No servers with Manage Server found.</p><% } %>
 </div>
+<% if (!guilds.length) { %>
+  <div class="empty">No servers with Manage Server found. <a href="/auth/logout">Re-authorise</a> if you just changed permissions.</div>
+<% } %>
+
 <%- include("partials/foot") %>

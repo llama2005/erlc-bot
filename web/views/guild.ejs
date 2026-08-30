@@ -1,13 +1,15 @@
-<%- include("partials/head", { title: guild.name }) %>
-<%- include("partials/guildnav") %>
+<%- include("partials/head", { title: "Settings · " + guild.name }) %>
 
-<% if (saved) { %><div class="flash">Settings saved.</div><% } %>
+<div class="page-head">
+  <div><h1>Settings</h1><div class="sub">Changes sync to the bot instantly. You can also use <code>/config</code> in Discord.</div></div>
+</div>
+<% if (saved) { %><div class="flash">✓ Settings saved.</div><% } %>
 
 <%
 function chanSelect(name, selected, type) {
   const list = type != null ? channels.filter(c => c.type === type) : channels.filter(c => c.type !== 4);
   let h = `<select name="${name}"><option value="">— none —</option>`;
-  list.forEach(c => { h += `<option value="${c.id}"${c.id === selected ? " selected" : ""}>${c.type === 4 ? "{1F4C1} " : "#"}${c.name}</option>`; });
+  list.forEach(c => { h += `<option value="${c.id}"${c.id === selected ? " selected" : ""}>${c.type === 4 ? "[cat] " : "#"}${c.name}</option>`; });
   return h + "</select>";
 }
 function roleSelect(name, selected) {
@@ -18,14 +20,14 @@ function roleSelect(name, selected) {
 %>
 
 <form method="post" action="/dashboard/<%= guild.id %>" class="settings">
-  <section>
+  <section class="card">
     <h2>General</h2>
     <label>Prefix <input type="text" name="prefix" value="<%= cfg.prefix %>" maxlength="5" size="4"></label>
     <label class="check"><input type="checkbox" name="aiEnabled" <%= cfg.aiEnabled ? "checked" : "" %>> AI command &amp; @mention replies</label>
     <label class="check"><input type="checkbox" name="reasonRequired" <%= cfg.reasonRequired ? "checked" : "" %>> Require a reason on every moderation action</label>
   </section>
 
-  <section>
+  <section class="card">
     <h2>Log channels</h2>
     <label>Moderation cases <%- chanSelect("modlogChannel", cfg.modlogChannel) %></label>
     <label>Bot command usage <%- chanSelect("commandLogChannel", cfg.commandLogChannel) %></label>
@@ -43,26 +45,26 @@ function roleSelect(name, selected) {
     <label>Weekly staff-quota report <%- chanSelect("quotaChannel", cfg.quotaChannel) %></label>
   </section>
 
-  <section>
+  <section class="card">
     <h2>In-game auto-log</h2>
     <label class="check"><input type="checkbox" name="ingameAutolog" <%= cfg.ingameAutolog ? "checked" : "" %>> Turn <code>:kick</code> / <code>:ban</code> / <code>:jail</code> run in-game — and <code>:pm &lt;player&gt; &lt;trigger&gt; &lt;reason&gt;</code> — into logged cases</label>
     <label>Warn trigger word (used in <code>:pm player <trigger> reason</code>) <input type="text" name="ingameWarnTrigger" value="<%= cfg.ingameWarnTrigger || 'warn' %>" maxlength="16" size="10"></label>
   </section>
 
-  <section>
+  <section class="card">
     <h2>Staff quotas</h2>
     <label>Weekly cases per staff (0 = off) <input type="number" name="weeklyCaseQuota" value="<%= cfg.weeklyCaseQuota || 0 %>" min="0" size="4"></label>
     <label>Weekly shift-time per staff, in minutes (0 = off) <input type="number" name="weeklyShiftQuotaMin" value="<%= Math.round((cfg.weeklyShiftQuota || 0) / 60000) %>" min="0" size="5"></label>
     <p class="muted">A report posts to the quota channel each week.</p>
   </section>
 
-  <section>
+  <section class="card">
     <h2>Tickets</h2>
     <label>Ticket category <%- chanSelect("ticketCategory", cfg.ticketCategory, 4) %></label>
     <label>Ticket staff role <%- roleSelect("ticketStaffRole", cfg.ticketStaffRole) %></label>
   </section>
 
-  <section>
+  <section class="card">
     <h2>Roles</h2>
     <label>Staff — ER:LC / moderation / shift / session commands <%- roleSelect("erlcStaffRole", cfg.erlcStaffRole) %></label>
     <label>Admin — approve ban requests, shift admin, void others' cases <%- roleSelect("erlcAdminRole", cfg.erlcAdminRole) %></label>
@@ -70,14 +72,14 @@ function roleSelect(name, selected) {
     <label>Session ping — pinged on SSU/SSD <%- roleSelect("sessionPingRole", cfg.sessionPingRole) %></label>
   </section>
 
-  <section>
+  <section class="card">
     <h2>ER:LC API key</h2>
     <p class="muted">Server-Key from the ER:LC private server settings. Leave blank to keep the current one.</p>
     <label>New key <input type="password" name="erlcKey" placeholder="<%= cfg.erlcKey ? '•••••••• (set)' : 'not set' %>" autocomplete="off"></label>
     <% if (cfg.erlcKey) { %><label class="check"><input type="checkbox" name="clearErlcKey"> Remove the current key</label><% } %>
   </section>
 
-  <section>
+  <section class="card">
     <h2>Disabled modules</h2>
     <div class="modgrid">
       <% modules.forEach(function(m){ %>

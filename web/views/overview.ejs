@@ -1,0 +1,76 @@
+<%- include("partials/head", { title: "Overview · " + guild.name }) %>
+
+<div class="page-head">
+  <div><h1>Overview</h1><div class="sub">At a glance for <strong><%= guild.name %></strong>.</div></div>
+</div>
+
+<%
+const online = server && server !== "offline" && typeof server === "object";
+%>
+<div class="tiles">
+  <div class="tile <%= online ? 'good' : (server === 'offline' ? 'bad' : '') %>">
+    <div class="k">ER:LC server</div>
+    <div class="v">
+      <% if (online) { %><%= server.CurrentPlayers %><small>/<%= server.MaxPlayers %> online</small>
+      <% } else if (server === "offline") { %>offline
+      <% } else { %>—<small> not linked</small><% } %>
+    </div>
+  </div>
+  <a class="tile" href="/dashboard/<%= guild.id %>/shifts">
+    <div class="k">On duty</div><div class="v"><%= active.length %></div>
+  </a>
+  <a class="tile <%= counts.banreqs ? 'warn' : '' %>" href="/dashboard/<%= guild.id %>/banreqs">
+    <div class="k">Ban requests</div><div class="v"><%= counts.banreqs %></div>
+  </a>
+  <a class="tile <%= counts.appeals ? 'warn' : '' %>" href="/dashboard/<%= guild.id %>/appeals">
+    <div class="k">Open appeals</div><div class="v"><%= counts.appeals %></div>
+  </a>
+  <a class="tile <%= counts.loa ? 'warn' : '' %>" href="/dashboard/<%= guild.id %>/loa">
+    <div class="k">LOA requests</div><div class="v"><%= counts.loa %></div>
+  </a>
+  <a class="tile" href="/dashboard/<%= guild.id %>/cases">
+    <div class="k">Cases this week</div><div class="v"><%= weekCases %></div>
+  </a>
+</div>
+
+<div class="card">
+  <h2>Recent cases</h2>
+  <% if (!recent.length) { %><p class="muted">No cases yet.</p><% } else { %>
+  <div class="table-wrap">
+    <table class="grid">
+      <thead><tr><th>#</th><th>Type</th><th>Subject</th><th>Reason</th><th>Mod</th><th>When</th></tr></thead>
+      <tbody>
+        <% recent.forEach(function(c){ %>
+        <tr class="<%= c.voided ? 'voided' : '' %>">
+          <td><a href="/dashboard/<%= guild.id %>/cases?q=<%= c.case_number %>">#<%= c.case_number %></a></td>
+          <td><span class="type-badge t-<%= c.type %>"><%= c.type %></span></td>
+          <td><%= c.subject_name %> <span class="muted mono"><%= c.platform === "roblox" ? "R" : "D" %></span></td>
+          <td class="reason"><%= (c.reason || "—").slice(0, 90) %></td>
+          <td><%= /^\d{17,20}$/.test(String(c.moderator_id)) ? who(names, c.moderator_id) : (c.moderator_tag || c.moderator_id) %></td>
+          <td class="muted"><%= ago(c.created_at) %></td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <% } %>
+  <div class="btn-row"><a href="/dashboard/<%= guild.id %>/cases" class="btn ghost sm">All cases →</a></div>
+</div>
+
+<div class="card">
+  <h2>Shift leaderboard <span class="muted" style="font-weight:400">· last 7 days</span></h2>
+  <% if (!board.length) { %><p class="muted">No completed shifts this week.</p><% } else {
+     const max = Math.max(...board.map(r => Number(r.total))); %>
+  <div class="stack">
+    <% board.forEach(function(r){ %>
+      <div>
+        <div class="row-between" style="margin-bottom:4px"><span><%= who(names, r.user_id) %></span><span class="mono"><%= formatDuration(Number(r.total)) %> · <%= r.sessions %> shifts</span></div>
+        <div class="bar"><span style="width:<%= max ? Math.round(Number(r.total)/max*100) : 0 %>%"></span></div>
+      </div>
+    <% }) %>
+  </div>
+  <% } %>
+  <div class="btn-row"><a href="/dashboard/<%= guild.id %>/shifts" class="btn ghost sm">Full shifts →</a></div>
+</div>
+
+<%- include("partials/foot") %>

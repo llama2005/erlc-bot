@@ -1,0 +1,33 @@
+<%- include("partials/head", { title: "Appeals · " + guild.name }) %>
+
+<div class="page-head">
+  <div><h1>Ban appeals</h1><div class="sub">Approving runs <code>:unban</code> in-game and logs an unban case.</div></div>
+</div>
+
+<div class="card">
+  <h2>Pending — <%= appeals.length %></h2>
+  <% if (!appeals.length) { %><p class="muted">No open appeals.</p><% } else { %>
+  <div class="stack">
+    <% appeals.forEach(function(a){ %>
+      <div class="card" style="margin:0">
+        <div class="row-between">
+          <div>
+            <strong><%= who(names, a.user_id) %></strong>
+            <% if (a.roblox_name) { %> · <a href="https://www.roblox.com/users/<%= a.roblox_id %>/profile" target="_blank"><%= a.roblox_name %></a><% } %>
+            <span class="muted mono">appeal #<%= a.id %> · <%= ago(a.created_at) %></span>
+          </div>
+          <div class="actions">
+            <form method="post" action="/dashboard/<%= guild.id %>/appeals/<%= a.id %>/approve" onsubmit="return confirm('Approve and unban?')"><button class="btn ok sm">Approve &amp; unban</button></form>
+            <form method="post" action="/dashboard/<%= guild.id %>/appeals/<%= a.id %>/deny"><button class="btn danger sm">Deny</button></form>
+          </div>
+        </div>
+        <p style="margin:10px 0 0; white-space:pre-wrap"><%= a.reason %></p>
+      </div>
+    <% }) %>
+  </div>
+  <% } %>
+</div>
+
+<p class="muted">Players appeal with <code>/appeal</code> in Discord (or a DM to the bot, if enabled).</p>
+
+<%- include("partials/foot") %>

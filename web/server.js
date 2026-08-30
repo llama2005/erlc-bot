@@ -18,11 +18,16 @@ import {
   ROBLOX_TYPES,
   DISCORD_TYPES,
 } from "../src/lib/cases.js";
-import { leaderboard, userShiftStats, adjustShiftTime, listActiveShifts } from "../src/lib/shifts.js";
+import { subjectStats } from "../src/lib/cases.js";
+import { leaderboard, userShiftStats, adjustShiftTime, listActiveShifts, wipeShifts } from "../src/lib/shifts.js";
 import { listPendingBanRequests, getBanRequest, resolveBanRequest } from "../src/lib/banRequests.js";
+import { listLoa, getLoa, setLoaStatus } from "../src/lib/loa.js";
+import { listAppeals, getAppeal, resolveAppeal } from "../src/lib/appeals.js";
+import { listAutohints, addAutohint, removeAutohint, toggleAutohint } from "../src/lib/autohint.js";
+import { moderatorCaseStats } from "../src/lib/modstats.js";
 import { NODES, getPermGroups, upsertPermGroup, deletePermGroup } from "../src/lib/permissions.js";
 import { erlc, ErlcError } from "../src/lib/erlc.js";
-import { formatDuration } from "../src/lib/util.js";
+import { formatDuration, parseDuration } from "../src/lib/util.js";
 import * as d from "./discord.js";
 import { setSession, clearSession, readSession, requireAuth } from "./auth.js";
 
@@ -45,7 +50,18 @@ console.log(`OAuth redirect URI: ${REDIRECT}  ← this must be in the Discord ap
 app.locals.avatarUrl = d.avatarUrl;
 app.locals.guildIconUrl = d.guildIconUrl;
 app.locals.formatDuration = formatDuration;
-app.locals.fmtDate = (ms) => new Date(Number(ms)).toISOString().replace("T", " ").slice(0, 16);
+app.locals.fmtDate = (ms) => (ms ? new Date(Number(ms)).toISOString().replace("T", " ").slice(0, 16) + " UTC" : "—");
+app.locals.ago = (ms) => {
+  const s = Math.round((Date.now() - Number(ms)) / 1000);
+  if (s < 60) return "just now";
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+  return `${Math.floor(s / 86400)}d ago`;
+};
+app.locals.who = (names, id) => (id ? names.get(String(id)) || `user …${String(id).slice(-4)}` : "—");
+d.botIdentity().then((u) => {
+  app.locals.botAvatar = d.botAvatarUrl(u) || "";
+});
 
 // ---- auth ----
 const states = new Map();
@@ -81,8 +97,9 @@ app.get("/auth/logout", (req, res) => {
 });
 
 // ---- landing ----
-app.get("/", (req, res) => {
-  res.render("index", { user: readSession(req), inviteUrl: d.inviteUrl() });
+app.get("/", async (req, res) => {
+  const guilds = await listBotGuilds().catch(() => []);
+  res.render("index", { user: readSession(req), inviteUrl: d.inviteUrl(), stats: { guilds: guilds.length, commands: 46 } });
 });
 
 // ---- dashboard ----
@@ -104,20 +121,65 @@ async function requireGuildAdmin(req, res, next) {
   if (!bg) return res.status(404).render("error", { user: req.user, message: "The bot isn't in that server yet." });
   req.cfg = await refreshGuildConfig(guildId); // always fresh from the DB for the dashboard
   req.guild = { id: guildId, name: bg.name, icon: bg.icon };
+  const [loaP, appealsP, banreqsP] = await Promise.all([
+    listLoa(guildId, "pending"),
+    listAppeals(guildId, "pending"),
+    listPendingBanRequests(guildId),
+  ]);
+  req.counts = { loa: loaP.length, appeals: appealsP.length, banreqs: banreqsP.length };
   next();
 }
 
+/** render helper — threads user/guild/counts through; `ids` are resolved to display names */
+async function g(req, res, view, extra = {}, ids = []) {
+  const names = ids.length ? await d.memberNames(req.guild.id, ids).catch(() => new Map()) : new Map();
+  res.render(view, { user: req.user, guild: req.guild, counts: req.counts, cfg: req.cfg, names, ...extra });
+}
+
 const MODULES = ["general", "moderation", "discord", "erlc", "roblox", "connections", "shifts", "staff", "utility"];
+
+// ---- overview (default landing for a guild) ----
+app.get("/dashboard/:guildId/overview", requireAuth, requireGuildAdmin, async (req, res) => {
+  const cfg = req.cfg;
+  const since = Date.now() - 7 * 864e5;
+  const [active, recent, board, srv] = await Promise.all([
+    listActiveShifts(req.guild.id),
+    getRecentCases(req.guild.id, 8),
+    leaderboard(req.guild.id, since),
+    (async () => {
+      const key = cfg.erlcKey || config.erlc.devKey;
+      if (!key || !cfg.statusChannel) return null;
+      return erlc.server(key).catch(() => "offline");
+    })(),
+  ]);
+  const ids = [
+    ...active.map((s) => s.user_id),
+    ...recent.map((c) => c.moderator_id),
+    ...board.map((r) => r.user_id),
+  ];
+  await g(
+    req,
+    res,
+    "overview",
+    {
+      tab: "overview",
+      active,
+      recent,
+      board: board.slice(0, 5),
+      server: srv,
+      weekCases: recent.filter((c) => c.created_at >= since).length,
+      quota: { cases: cfg.weeklyCaseQuota, shift: cfg.weeklyShiftQuota },
+    },
+    ids,
+  );
+});
 
 app.get("/dashboard/:guildId", requireAuth, requireGuildAdmin, async (req, res) => {
   const [channels, roles] = await Promise.all([
     d.getGuildChannels(req.guild.id).catch(() => []),
     d.getGuildRoles(req.guild.id).catch(() => []),
   ]);
-  res.render("guild", {
-    user: req.user,
-    guild: req.guild,
-    cfg: req.cfg,
+  await g(req, res, "guild", {
     channels: channels.filter((c) => [0, 5, 4].includes(c.type)).sort((a, b) => a.position - b.position),
     roles: roles.filter((r) => r.name !== "@everyone").sort((a, b) => b.position - a.position),
     modules: MODULES,
@@ -169,15 +231,54 @@ app.post("/dashboard/:guildId", requireAuth, requireGuildAdmin, async (req, res)
 
 // ---- cases ----
 app.get("/dashboard/:guildId/cases", requireAuth, requireGuildAdmin, async (req, res) => {
-  let cases;
   const q = (req.query.q || "").trim();
-  if (/^\d+$/.test(q)) {
-    const c = await getCase(req.guild.id, Number(q));
+  const typeF = (req.query.type || "").trim();
+  const platF = (req.query.platform || "").trim();
+  const page = Math.max(1, Number(req.query.page) || 1);
+  const per = 30;
+
+  let cases;
+  if (/^#?\d+$/.test(q)) {
+    const c = await getCase(req.guild.id, Number(q.replace("#", "")));
     cases = c ? [c] : [];
   } else {
-    cases = await getRecentCases(req.guild.id, 50);
+    cases = await getRecentCases(req.guild.id, 500);
+    if (q) {
+      const ql = q.toLowerCase();
+      cases = cases.filter(
+        (c) => c.subject_name.toLowerCase().includes(ql) || String(c.subject_id) === q || (c.reason || "").toLowerCase().includes(ql),
+      );
+    }
+    if (typeF) cases = cases.filter((c) => c.type === typeF);
+    if (platF) cases = cases.filter((c) => c.platform === platF);
   }
-  res.render("cases", { user: req.user, guild: req.guild, cases, q, tab: "cases", ROBLOX_TYPES, DISCORD_TYPES });
+  const total = cases.length;
+  const paged = cases.slice((page - 1) * per, page * per);
+  await g(
+    req,
+    res,
+    "cases",
+    { tab: "cases", cases: paged, q, typeF, platF, page, pages: Math.max(1, Math.ceil(total / per)), total, ROBLOX_TYPES, DISCORD_TYPES },
+    paged.map((c) => c.moderator_id),
+  );
+});
+
+app.post("/dashboard/:guildId/cases/new", requireAuth, requireGuildAdmin, async (req, res) => {
+  const b = req.body;
+  if (b.subjectId && b.subjectName && b.type) {
+    await createCase({
+      guildId: req.guild.id,
+      platform: b.platform === "discord" ? "discord" : "roblox",
+      subjectId: b.subjectId.trim(),
+      subjectName: b.subjectName.trim(),
+      type: b.type,
+      reason: (b.reason || "").trim() || null,
+      moderatorId: req.user.id,
+      moderatorTag: `${req.user.username} (web)`,
+      executed: false,
+    });
+  }
+  res.redirect(`/dashboard/${req.guild.id}/cases`);
 });
 
 app.post("/dashboard/:guildId/cases/:n/:op", requireAuth, requireGuildAdmin, async (req, res) => {
@@ -188,7 +289,7 @@ app.post("/dashboard/:guildId/cases/:n/:op", requireAuth, requireGuildAdmin, asy
     else if (req.params.op === "reason" && req.body.reason) await editReason(req.guild.id, n, req.body.reason);
     else if (req.params.op === "type" && req.body.type) await editType(req.guild.id, n, req.body.type);
   }
-  res.redirect(`/dashboard/${req.guild.id}/cases`);
+  res.redirect(`/dashboard/${req.guild.id}/cases?${new URLSearchParams(req.query).toString()}`);
 });
 
 // ---- shifts ----
@@ -196,30 +297,100 @@ app.get("/dashboard/:guildId/shifts", requireAuth, requireGuildAdmin, async (req
   const days = Math.min(90, Math.max(1, Number(req.query.days) || 7));
   const since = Date.now() - days * 864e5;
   const [board, active] = await Promise.all([leaderboard(req.guild.id, since), listActiveShifts(req.guild.id)]);
-  res.render("shifts", { user: req.user, guild: req.guild, board, active, days, tab: "shifts" });
+  await g(req, res, "shifts", { board, active, days, tab: "shifts", quota: req.cfg.weeklyShiftQuota }, [...board.map((r) => r.user_id), ...active.map((s) => s.user_id)]);
 });
 
 app.post("/dashboard/:guildId/shifts/adjust", requireAuth, requireGuildAdmin, async (req, res) => {
   const { userId, minutes, direction } = req.body;
-  const ms = Math.abs(Number(minutes) || 0) * 60000;
-  if (userId && ms) await adjustShiftTime(req.guild.id, userId.trim(), direction === "remove" ? -ms : ms);
+  const uid = (userId || "").trim();
+  if (uid && direction === "wipe") await wipeShifts(req.guild.id, uid);
+  else {
+    const ms = Math.abs(Number(minutes) || 0) * 60000;
+    if (uid && ms) await adjustShiftTime(req.guild.id, uid, direction === "remove" ? -ms : ms);
+  }
   res.redirect(`/dashboard/${req.guild.id}/shifts`);
+});
+
+// ---- leave of absence ----
+app.get("/dashboard/:guildId/loa", requireAuth, requireGuildAdmin, async (req, res) => {
+  const [pending, active] = await Promise.all([listLoa(req.guild.id, "pending"), listLoa(req.guild.id, "active")]);
+  await g(req, res, "loa", { tab: "loa", pending, active }, [...pending, ...active].flatMap((r) => [r.user_id, r.reviewed_by]));
+});
+app.post("/dashboard/:guildId/loa/:id/:decision", requireAuth, requireGuildAdmin, async (req, res) => {
+  const row = await getLoa(Number(req.params.id));
+  if (row && row.guild_id === req.guild.id) {
+    const s = { approve: "active", deny: "denied", end: "ended" }[req.params.decision];
+    if (s) await setLoaStatus(row.id, s, req.user.id);
+  }
+  res.redirect(`/dashboard/${req.guild.id}/loa`);
+});
+
+// ---- appeals ----
+app.get("/dashboard/:guildId/appeals", requireAuth, requireGuildAdmin, async (req, res) => {
+  {
+    const appeals = await listAppeals(req.guild.id, "pending");
+    await g(req, res, "appeals", { tab: "appeals", appeals }, appeals.map((a) => a.user_id));
+  }
+});
+app.post("/dashboard/:guildId/appeals/:id/:decision", requireAuth, requireGuildAdmin, async (req, res) => {
+  const a = await getAppeal(Number(req.params.id));
+  if (a && a.guild_id === req.guild.id && a.status === "pending") {
+    const approve = req.params.decision === "approve";
+    await resolveAppeal(a.id, approve ? "approved" : "denied", req.user.id);
+    if (approve) {
+      const key = req.cfg.erlcKey || config.erlc.devKey;
+      let executed = false;
+      if (key && a.roblox_name) {
+        try {
+          await erlc.command(key, `:unban ${a.roblox_name}`);
+          executed = true;
+        } catch {
+          /* ignore */
+        }
+      }
+      if (a.roblox_id)
+        await createCase({
+          guildId: req.guild.id,
+          platform: "roblox",
+          subjectId: a.roblox_id,
+          subjectName: a.roblox_name || a.roblox_id,
+          type: "unban",
+          reason: `Appeal #${a.id} approved`,
+          moderatorId: req.user.id,
+          moderatorTag: `${req.user.username} (web)`,
+          executed,
+        });
+    }
+    await d.getGuildMember(req.guild.id, a.user_id); // touch
+  }
+  res.redirect(`/dashboard/${req.guild.id}/appeals`);
+});
+
+// ---- auto-hints ----
+app.get("/dashboard/:guildId/autohints", requireAuth, requireGuildAdmin, async (req, res) => {
+  await g(req, res, "autohints", { tab: "autohints", hints: await listAutohints(req.guild.id) });
+});
+app.post("/dashboard/:guildId/autohints", requireAuth, requireGuildAdmin, async (req, res) => {
+  const ms = parseDuration(req.body.interval || "");
+  if (req.body.message && ms && ms >= 60000) await addAutohint(req.guild.id, req.body.message.slice(0, 200), ms);
+  res.redirect(`/dashboard/${req.guild.id}/autohints`);
+});
+app.post("/dashboard/:guildId/autohints/:id/:op", requireAuth, requireGuildAdmin, async (req, res) => {
+  const id = Number(req.params.id);
+  if (req.params.op === "delete") await removeAutohint(req.guild.id, id);
+  else if (req.params.op === "on") await toggleAutohint(req.guild.id, id, true);
+  else if (req.params.op === "off") await toggleAutohint(req.guild.id, id, false);
+  res.redirect(`/dashboard/${req.guild.id}/autohints`);
 });
 
 // ---- permissions ----
 app.get("/dashboard/:guildId/permissions", requireAuth, requireGuildAdmin, async (req, res) => {
-  const [groups, roles] = await Promise.all([
-    getPermGroups(req.guild.id),
-    d.getGuildRoles(req.guild.id).catch(() => []),
-  ]);
-  res.render("permissions", {
-    user: req.user,
-    guild: req.guild,
-    cfg: req.cfg,
+  const [groups, roles] = await Promise.all([getPermGroups(req.guild.id), d.getGuildRoles(req.guild.id).catch(() => [])]);
+  await g(req, res, "permissions", {
+    tab: "permissions",
     groups,
     roles: roles.filter((r) => r.name !== "@everyone" && !r.managed).sort((a, b) => b.position - a.position),
     nodes: NODES,
-    tab: "permissions",
   });
 });
 
@@ -238,7 +409,7 @@ app.post("/dashboard/:guildId/permissions/:roleId/delete", requireAuth, requireG
 // ---- ban requests ----
 app.get("/dashboard/:guildId/banreqs", requireAuth, requireGuildAdmin, async (req, res) => {
   const requests = await listPendingBanRequests(req.guild.id);
-  res.render("banreqs", { user: req.user, guild: req.guild, requests, tab: "banreqs" });
+  await g(req, res, "banreqs", { requests, tab: "banreqs" }, requests.map((r) => r.requested_by));
 });
 
 app.post("/dashboard/:guildId/banreqs/:id/:decision", requireAuth, requireGuildAdmin, async (req, res) => {

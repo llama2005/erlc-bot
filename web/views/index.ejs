@@ -1,14 +1,59 @@
-<%- include("partials/head", { title: "Home" }) %>
+<%- include("partials/head", { title: "" }) %>
+
 <section class="hero">
-  <h1>ER:LC + Discord moderation bot</h1>
-  <p>Cases, shifts, account linking, ban requests, and automatic in-game logging — configurable per server.</p>
-  <p class="cta">
+  <h1>ER:LC moderation,<br>done properly.</h1>
+  <p class="lead">
+    A permanent case log for every warn, kick and ban — Discord <em>and</em> in-game — plus shifts,
+    account linking, appeals, ban-request approvals and automatic activity logging. Configured
+    per server, from Discord or right here.
+  </p>
+  <div class="cta">
     <% if (user) { %>
       <a href="/dashboard" class="btn big">Open dashboard</a>
     <% } else { %>
       <a href="/auth/login" class="btn big">Log in with Discord</a>
     <% } %>
     <a href="<%= inviteUrl %>" class="btn big ghost">Add to your server</a>
-  </p>
+  </div>
 </section>
+
+<div class="feature-grid">
+  <div class="feature">
+    <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8"/></svg></div>
+    <h3>Unified case log</h3>
+    <p>Every action gets a numbered, permanent case keyed to the Roblox account. Nothing is lost to a restart or a name change.</p>
+  </div>
+  <div class="feature">
+    <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4v16M4 12l7-4v8zM11 12l9-5v10z"/></svg></div>
+    <h3>In-game auto-log</h3>
+    <p><code>:kick</code>, <code>:ban</code>, <code>:jail</code> run in-game — and <code>:pm player warn …</code> — are turned into cases automatically.</p>
+  </div>
+  <div class="feature">
+    <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></div>
+    <h3>Shifts &amp; accountability</h3>
+    <p>Clock in/out, leaderboards, weekly quotas, LOA requests, and off-duty activity alerts.</p>
+  </div>
+  <div class="feature">
+    <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+    <h3>Fine-grained permissions</h3>
+    <p>Build custom staff ranks — a Trial Mod that can only warn, a Senior that can approve bans — as permission groups.</p>
+  </div>
+  <div class="feature">
+    <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+    <h3>Appeals &amp; ban requests</h3>
+    <p>Players appeal, senior staff approve or deny with one click — approving runs the <code>:unban</code> and logs it.</p>
+  </div>
+  <div class="feature">
+    <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg></div>
+    <h3>Live logging</h3>
+    <p>Joins, kills, mod calls and staff commands mirrored to Discord as they happen — plus server up/down alerts.</p>
+  </div>
+</div>
+
+<div class="stat-strip">
+  <div><div class="n"><%= typeof stats !== "undefined" ? stats.guilds : "—" %></div><div class="l">servers</div></div>
+  <div><div class="n"><%= typeof stats !== "undefined" ? stats.commands : "46" %></div><div class="l">commands</div></div>
+  <div><div class="n">∞</div><div class="l">cases retained</div></div>
+</div>
+
 <%- include("partials/foot") %>

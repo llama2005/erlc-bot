@@ -1,35 +1,52 @@
 <%- include("partials/head", { title: "Shifts · " + guild.name }) %>
-<%- include("partials/guildnav") %>
 
-<h2>On duty now — <%= active.length %></h2>
-<ul class="plain">
-  <% active.forEach(function(s){ %>
-    <li><span class="mono"><%= s.user_id %></span> — <%= formatDuration(Date.now() - Number(s.started_at)) %> (<%= s.shift_type %>)</li>
-  <% }) %>
-  <% if (!active.length) { %><li class="muted">nobody</li><% } %>
-</ul>
-
-<h2>Leaderboard
-  <form method="get" class="inline">
-    last <input type="number" name="days" value="<%= days %>" min="1" max="90" size="3"> days
-    <button class="btn sm">Go</button>
+<div class="page-head">
+  <div><h1>Shifts</h1><div class="sub">Leaderboard over the last <%= days %> days<% if (quota) { %> · weekly quota <%= formatDuration(quota) %><% } %></div></div>
+  <form class="inline" method="get">
+    <select name="days" onchange="this.form.submit()">
+      <% [7,14,30,90].forEach(function(dd){ %><option value="<%= dd %>" <%= dd===days?"selected":"" %>>last <%= dd %>d</option><% }) %>
+    </select>
   </form>
-</h2>
-<table class="grid">
-  <thead><tr><th>#</th><th>User ID</th><th>Time</th><th>Sessions</th></tr></thead>
-  <tbody>
-  <% board.forEach(function(r, i){ %>
-    <tr><td><%= i + 1 %></td><td class="mono"><%= r.user_id %></td><td><%= formatDuration(Number(r.total)) %></td><td><%= r.sessions %></td></tr>
-  <% }) %>
-  <% if (!board.length) { %><tr><td colspan="4" class="muted">No completed shifts in this window.</td></tr><% } %>
-  </tbody>
-</table>
+</div>
 
-<h2>Adjust time</h2>
-<form method="post" action="/dashboard/<%= guild.id %>/shifts/adjust" class="inline">
-  <input type="text" name="userId" placeholder="Discord user ID" required>
-  <select name="direction"><option value="add">add</option><option value="remove">remove</option></select>
-  <input type="number" name="minutes" placeholder="minutes" min="1" required>
-  <button class="btn">Apply</button>
-</form>
+<div class="card">
+  <h2>On duty now — <%= active.length %></h2>
+  <% if (!active.length) { %><p class="muted">Nobody is clocked in.</p><% } else { %>
+    <div class="stack">
+      <% active.forEach(function(s){ %>
+        <div class="row-between"><span><strong><%= who(names, s.user_id) %></strong> <span class="badge"><%= s.shift_type %></span></span>
+        <span class="mono"><%= formatDuration(Date.now() - Number(s.started_at)) %></span></div>
+      <% }) %>
+    </div>
+  <% } %>
+</div>
+
+<div class="card">
+  <h2>Leaderboard</h2>
+  <% if (!board.length) { %><p class="muted">No completed shifts in this window.</p><% } else {
+     const max = Math.max(...board.map(r => Number(r.total))); %>
+  <div class="stack">
+    <% board.forEach(function(r, i){ %>
+      <div>
+        <div class="row-between" style="margin-bottom:4px">
+          <span><span class="muted mono"><%= i+1 %>.</span> <strong><%= who(names, r.user_id) %></strong></span>
+          <span class="mono"><%= formatDuration(Number(r.total)) %> · <%= r.sessions %> shifts<% if (quota) { %> · <%= Math.round(Number(r.total)/quota*100) %>%<% } %></span>
+        </div>
+        <div class="bar"><span style="width:<%= max ? Math.round(Number(r.total)/max*100) : 0 %>%; <%= quota && Number(r.total) >= quota ? 'background:var(--ok)' : '' %>"></span></div>
+      </div>
+    <% }) %>
+  </div>
+  <% } %>
+</div>
+
+<div class="card">
+  <h2>Adjust a user's logged time</h2>
+  <form method="post" action="/dashboard/<%= guild.id %>/shifts/adjust" class="inline" style="gap:10px;flex-wrap:wrap">
+    <label style="margin:0">User ID <input type="text" name="userId" placeholder="Discord user ID" required></label>
+    <label style="margin:0">Minutes <input type="number" name="minutes" min="0" value="60"></label>
+    <select name="direction"><option value="add">add</option><option value="remove">remove</option><option value="wipe">wipe all</option></select>
+    <button class="btn subtle">Apply</button>
+  </form>
+</div>
+
 <%- include("partials/foot") %>

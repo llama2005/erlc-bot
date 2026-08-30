@@ -1,11 +1,15 @@
 <%- include("partials/head", { title: "Permissions · " + guild.name }) %>
-<%- include("partials/guildnav") %>
 
-<p class="muted">
-  Grant Discord roles specific bot capabilities. <strong>Manage Server</strong> and the server owner always have everything.
-  <% if (cfg.erlcAdminRole) { %> Built-in admin role: &lt;@&amp;<%= cfg.erlcAdminRole %>&gt; (all).<% } %>
-  <% if (cfg.erlcStaffRole) { %> Built-in staff role: &lt;@&amp;<%= cfg.erlcStaffRole %>&gt; (standard bundle).<% } %>
-</p>
+<div class="page-head">
+  <div>
+    <h1>Permissions</h1>
+    <div class="sub">
+      Map Discord roles to specific capabilities. <strong>Manage Server</strong> and the owner always have everything.
+      <% if (cfg.erlcAdminRole) { %> Admin role grants all but <code>config</code>.<% } %>
+      <% if (cfg.erlcStaffRole) { %> Staff role grants the standard bundle.<% } %>
+    </div>
+  </div>
+</div>
 
 <%
 const roleName = (id) => { const r = roles.find(x => x.id === id); return r ? "@" + r.name : id; };

@@ -1,0 +1,38 @@
+<%- include("partials/head", { title: "Auto-hints · " + guild.name }) %>
+
+<div class="page-head">
+  <div><h1>Auto-hints</h1><div class="sub">Recurring in-game <code>:h</code> messages. Needs an ER:LC key set.</div></div>
+</div>
+
+<div class="card">
+  <% if (!hints.length) { %><p class="muted">No auto-hints yet.</p><% } else { %>
+  <div class="table-wrap"><table class="grid">
+    <thead><tr><th>#</th><th>Message</th><th>Every</th><th>Next</th><th></th></tr></thead>
+    <tbody>
+      <% hints.forEach(function(h){ %>
+      <tr>
+        <td class="mono">#<%= h.id %></td>
+        <td><%= h.message %></td>
+        <td class="mono"><%= formatDuration(Number(h.interval_ms)) %></td>
+        <td class="muted"><%= h.enabled ? ago(h.next_at).replace(" ago", "") : "—" %><%= Number(h.next_at) > Date.now() && h.enabled ? " from now" : "" %></td>
+        <td class="actions">
+          <form method="post" action="/dashboard/<%= guild.id %>/autohints/<%= h.id %>/<%= h.enabled ? 'off' : 'on' %>"><button class="btn subtle sm"><%= h.enabled ? "Pause" : "Resume" %></button></form>
+          <form method="post" action="/dashboard/<%= guild.id %>/autohints/<%= h.id %>/delete" onsubmit="return confirm('Delete this hint?')"><button class="btn danger sm">Delete</button></form>
+        </td>
+      </tr>
+      <% }) %>
+    </tbody>
+  </table></div>
+  <% } %>
+</div>
+
+<div class="card">
+  <h2>New auto-hint</h2>
+  <form method="post" action="/dashboard/<%= guild.id %>/autohints">
+    <label>Message <input type="text" name="message" maxlength="200" placeholder="Read the rules — no RDM/VDM." required></label>
+    <label>Interval <input type="text" name="interval" placeholder="e.g. 20m, 1h" required><span class="hint">Minimum 1 minute.</span></label>
+    <button class="btn">Add</button>
+  </form>
+</div>
+
+<%- include("partials/foot") %>

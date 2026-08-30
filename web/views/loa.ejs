@@ -1,0 +1,52 @@
+<%- include("partials/head", { title: "LOA · " + guild.name }) %>
+
+<div class="page-head">
+  <div><h1>Leave of absence</h1><div class="sub">Approve requests and end active leave. Staff on LOA are exempt from off-duty alerts.</div></div>
+</div>
+
+<div class="card">
+  <h2>Pending — <%= pending.length %></h2>
+  <% if (!pending.length) { %><p class="muted">No pending requests.</p><% } else { %>
+  <div class="table-wrap"><table class="grid">
+    <thead><tr><th>#</th><th>Staff</th><th>Window</th><th>Reason</th><th></th></tr></thead>
+    <tbody>
+      <% pending.forEach(function(r){ %>
+      <tr>
+        <td class="mono">#<%= r.id %></td>
+        <td><strong><%= who(names, r.user_id) %></strong></td>
+        <td class="muted"><%= fmtDate(r.starts_at) %> → <%= fmtDate(r.ends_at) %></td>
+        <td class="reason"><%= r.reason || "—" %></td>
+        <td class="actions">
+          <form method="post" action="/dashboard/<%= guild.id %>/loa/<%= r.id %>/approve"><button class="btn ok sm">Approve</button></form>
+          <form method="post" action="/dashboard/<%= guild.id %>/loa/<%= r.id %>/deny"><button class="btn danger sm">Deny</button></form>
+        </td>
+      </tr>
+      <% }) %>
+    </tbody>
+  </table></div>
+  <% } %>
+</div>
+
+<div class="card">
+  <h2>Active — <%= active.length %></h2>
+  <% if (!active.length) { %><p class="muted">Nobody is on leave.</p><% } else { %>
+  <div class="table-wrap"><table class="grid">
+    <thead><tr><th>#</th><th>Staff</th><th>Ends</th><th>Reason</th><th></th></tr></thead>
+    <tbody>
+      <% active.forEach(function(r){ %>
+      <tr>
+        <td class="mono">#<%= r.id %></td>
+        <td><strong><%= who(names, r.user_id) %></strong></td>
+        <td class="muted"><%= ago(r.ends_at) %> <%= Number(r.ends_at) > Date.now() ? "left" : "(overdue)" %></td>
+        <td class="reason"><%= r.reason || "—" %></td>
+        <td class="actions"><form method="post" action="/dashboard/<%= guild.id %>/loa/<%= r.id %>/end"><button class="btn subtle sm">End now</button></form></td>
+      </tr>
+      <% }) %>
+    </tbody>
+  </table></div>
+  <% } %>
+</div>
+
+<p class="muted">Staff request leave in Discord with <code>/loa request</code>.</p>
+
+<%- include("partials/foot") %>

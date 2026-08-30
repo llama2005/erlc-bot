@@ -3,20 +3,32 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title><%= typeof title !== "undefined" ? title + " · " : "" %>Bot Dashboard</title>
+<meta name="color-scheme" content="dark">
+<title><%= typeof title !== "undefined" && title ? title + " · " : "" %>ER:LC Bot</title>
 <link rel="stylesheet" href="/static/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%235b6cff'/><text x='16' y='22' font-size='16' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='700'>E</text></svg>">
 </head>
 <body>
 <header class="topbar">
-  <a href="/" class="brand">ER:LC Bot</a>
+  <a href="/" class="brand">
+    <img src="<%= typeof botAvatar !== 'undefined' && botAvatar ? botAvatar : '/static/x' %>" onerror="this.style.display='none'" alt="">
+    ER:LC Bot
+  </a>
+  <span class="spacer"></span>
   <nav>
     <% if (typeof user !== "undefined" && user) { %>
-      <a href="/dashboard">Dashboard</a>
-      <span class="me"><img src="<%= avatarUrl(user) %>" alt=""> <%= user.username %></span>
-      <a href="/auth/logout">Log out</a>
+      <a href="/dashboard"><span>Dashboard</span></a>
+      <span class="user-chip"><img src="<%= avatarUrl(user) %>" alt=""><span><%= user.username %></span></span>
+      <a href="/auth/logout" class="btn ghost sm">Log out</a>
     <% } else { %>
-      <a href="/auth/login" class="btn">Log in with Discord</a>
+      <a href="/auth/login" class="btn sm">Log in with Discord</a>
     <% } %>
   </nav>
 </header>
+<% if (typeof guild !== "undefined" && guild) { %>
+<div class="app">
+  <%- include("sidebar") %>
+  <div class="content">
+<% } else { %>
 <main>
+<% } %>

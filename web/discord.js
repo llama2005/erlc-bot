@@ -39,6 +39,49 @@ export const getUser = (token) => bearer("/users/@me", token);
 export const getUserGuilds = (token) => bearer("/users/@me/guilds", token);
 export const getGuildChannels = (guildId) => bot(`/guilds/${guildId}/channels`);
 export const getGuildRoles = (guildId) => bot(`/guilds/${guildId}/roles`);
+export const getGuildMember = (guildId, userId) => bot(`/guilds/${guildId}/members/${userId}`).catch(() => null);
+
+const nameCache = new Map(); // `${guild}:${user}` -> { name, at }
+const NAME_TTL = 10 * 60 * 1000;
+
+/** Resolve a batch of user IDs to display names for a guild (cached). Returns a Map. */
+export async function memberNames(guildId, ids) {
+  const out = new Map();
+  const need = [];
+  for (const id of new Set(ids.filter(Boolean).map(String))) {
+    const c = nameCache.get(`${guildId}:${id}`);
+    if (c && Date.now() - c.at < NAME_TTL) out.set(id, c.name);
+    else need.push(id);
+  }
+  await Promise.all(
+    need.map(async (id) => {
+      const m = await getGuildMember(guildId, id);
+      const name = m ? (m.nick || m.user?.global_name || m.user?.username || `user ${id}`) : `user ${id}`;
+      nameCache.set(`${guildId}:${id}`, { name, at: Date.now() });
+      out.set(id, name);
+    }),
+  );
+  return out;
+}
+export const postChannelMessage = (channelId, body) =>
+  fetch(`${API}/channels/${channelId}/messages`, {
+    method: "POST",
+    headers: { Authorization: `Bot ${config.discordToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+let _botUser = null;
+export async function botIdentity() {
+  if (_botUser) return _botUser;
+  try {
+    _botUser = await bot("/users/@me");
+  } catch {
+    _botUser = { id: config.discord.clientId, username: "ER:LC Bot", avatar: null };
+  }
+  return _botUser;
+}
+export const botAvatarUrl = (u) =>
+  u?.avatar ? `https://cdn.discordapp.com/avatars/${u.id}/${u.avatar}.png?size=64` : null;
 
 const MANAGE_GUILD = 1n << 5n;
 const ADMINISTRATOR = 1n << 3n;

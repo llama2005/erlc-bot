@@ -1,53 +1,92 @@
 <%- include("partials/head", { title: "Cases · " + guild.name }) %>
-<%- include("partials/guildnav") %>
 
-<form method="get" class="searchbar">
-  <input type="text" name="q" value="<%= q %>" placeholder="Case number…">
-  <button class="btn">Search</button>
-  <% if (q) { %><a href="/dashboard/<%= guild.id %>/cases" class="btn ghost">Clear</a><% } %>
+<div class="page-head">
+  <div><h1>Cases</h1><div class="sub"><%= total %> matching · numbered per server, kept forever</div></div>
+</div>
+
+<form class="searchbar" method="get">
+  <input type="search" name="q" value="<%= q %>" placeholder="name, Roblox ID, #case or text…">
+  <select name="type">
+    <option value="">any type</option>
+    <% [...new Set([...ROBLOX_TYPES, ...DISCORD_TYPES])].forEach(function(t){ %>
+      <option value="<%= t %>" <%= typeF === t ? "selected" : "" %>><%= t %></option>
+    <% }) %>
+  </select>
+  <select name="platform">
+    <option value="">any platform</option>
+    <option value="roblox" <%= platF === "roblox" ? "selected" : "" %>>ER:LC</option>
+    <option value="discord" <%= platF === "discord" ? "selected" : "" %>>Discord</option>
+  </select>
+  <button class="btn subtle sm">Filter</button>
+  <% if (q || typeF || platF) { %><a class="btn ghost sm" href="/dashboard/<%= guild.id %>/cases">Clear</a><% } %>
 </form>
 
-<table class="grid">
-  <thead><tr><th>#</th><th>Type</th><th>Subject</th><th>Reason</th><th>Moderator</th><th>When</th><th></th></tr></thead>
-  <tbody>
-  <% cases.forEach(function(c){ %>
-    <tr class="<%= c.voided ? 'voided' : '' %>">
-      <td>#<%= c.case_number %></td>
-      <td><%= c.type %><%= c.platform === 'discord' ? ' (dc)' : '' %></td>
-      <td>
-        <% if (c.platform === 'roblox') { %>
-          <a href="https://www.roblox.com/users/<%= c.subject_id %>/profile" target="_blank" rel="noopener"><%= c.subject_name %></a>
-        <% } else { %><%= c.subject_name %><% } %>
-      </td>
-      <td class="reason"><%= c.reason || "—" %></td>
-      <td class="mono"><%= c.moderator_id %></td>
-      <td class="muted"><%= fmtDate(c.created_at) %></td>
-      <td class="actions">
-        <% if (!c.voided) { %>
-          <details>
-            <summary>edit</summary>
-            <form method="post" action="/dashboard/<%= guild.id %>/cases/<%= c.case_number %>/reason">
-              <input type="text" name="reason" value="<%= c.reason || '' %>" placeholder="new reason">
-              <button class="btn sm">Save reason</button>
+<% if (!cases.length) { %>
+  <div class="empty">No cases match.</div>
+<% } else { %>
+<div class="table-wrap">
+  <table class="grid">
+    <thead><tr><th>#</th><th>Type</th><th>Subject</th><th>Reason</th><th>Moderator</th><th>When</th><th></th></tr></thead>
+    <tbody>
+      <% cases.forEach(function(c){ %>
+      <tr class="<%= c.voided ? 'voided' : '' %>">
+        <td class="mono">#<%= c.case_number %></td>
+        <td><span class="type-badge t-<%= c.type %>"><%= c.type %></span><% if (c.source === "ingame") { %> <span class="badge" title="Logged from in-game">in-game</span><% } %></td>
+        <td>
+          <% if (c.platform === "roblox") { %><a href="https://www.roblox.com/users/<%= c.subject_id %>/profile" target="_blank"><%= c.subject_name %></a>
+          <% } else { %><%= c.subject_name %><% } %>
+          <div class="muted mono"><%= c.subject_id %></div>
+        </td>
+        <td class="reason"><%= c.reason || "—" %><% if (c.voided) { %><br><span class="badge bad">voided</span><% } %></td>
+        <td><%= /^\d{17,20}$/.test(String(c.moderator_id)) ? who(names, c.moderator_id) : (c.moderator_tag || c.moderator_id) %></td>
+        <td class="muted" title="<%= fmtDate(c.created_at) %>"><%= ago(c.created_at) %></td>
+        <td class="actions">
+          <% if (!c.voided) { %>
+          <details><summary class="btn ghost sm">Edit</summary>
+            <form method="post" action="/dashboard/<%= guild.id %>/cases/<%= c.case_number %>/reason?<%= new URLSearchParams({q,type:typeF,platform:platF,page}).toString() %>">
+              <input type="text" name="reason" placeholder="new reason" required><button class="btn sm">Save</button>
             </form>
-            <form method="post" action="/dashboard/<%= guild.id %>/cases/<%= c.case_number %>/type">
-              <select name="type">
-                <% (c.platform === 'roblox' ? ROBLOX_TYPES : DISCORD_TYPES).forEach(function(t){ %>
-                  <option value="<%= t %>" <%= t === c.type ? 'selected' : '' %>><%= t %></option>
-                <% }) %>
-              </select>
-              <button class="btn sm">Change type</button>
+            <form method="post" action="/dashboard/<%= guild.id %>/cases/<%= c.case_number %>/type?<%= new URLSearchParams({q,type:typeF,platform:platF,page}).toString() %>">
+              <select name="type"><% (c.platform === "roblox" ? ROBLOX_TYPES : DISCORD_TYPES).forEach(function(t){ %><option <%= t===c.type?"selected":"" %>><%= t %></option><% }) %></select>
+              <button class="btn sm">Set</button>
             </form>
-            <form method="post" action="/dashboard/<%= guild.id %>/cases/<%= c.case_number %>/void" onsubmit="return confirm('Void case #<%= c.case_number %>?')">
-              <input type="text" name="reason" placeholder="void reason">
-              <button class="btn sm danger">Void</button>
+            <form method="post" action="/dashboard/<%= guild.id %>/cases/<%= c.case_number %>/void?<%= new URLSearchParams({q,type:typeF,platform:platF,page}).toString() %>" onsubmit="return confirm('Void case #<%= c.case_number %>?')">
+              <input type="text" name="reason" placeholder="why (optional)"><button class="btn danger sm">Void</button>
             </form>
           </details>
-        <% } else { %><span class="muted">voided</span><% } %>
-      </td>
-    </tr>
-  <% }) %>
-  <% if (!cases.length) { %><tr><td colspan="7" class="muted">No cases.</td></tr><% } %>
-  </tbody>
-</table>
+          <% } %>
+        </td>
+      </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+<% if (pages > 1) { %>
+  <div class="pager">
+    <% for (let p = 1; p <= pages; p++) { %>
+      <a class="btn <%= p === page ? '' : 'ghost' %> sm" href="?<%= new URLSearchParams({q,type:typeF,platform:platF,page:p}).toString() %>"><%= p %></a>
+    <% } %>
+  </div>
+<% } %>
+<% } %>
+
+<div class="card" style="margin-top:26px">
+  <h2>Add a case manually</h2>
+  <p class="card-desc">For actions taken outside the bot. Won't run anything in-game.</p>
+  <form method="post" action="/dashboard/<%= guild.id %>/cases/new">
+    <div class="field-grid">
+      <label>Platform
+        <select name="platform"><option value="roblox">ER:LC (Roblox)</option><option value="discord">Discord</option></select>
+      </label>
+      <label>Type
+        <select name="type"><% [...new Set([...ROBLOX_TYPES, ...DISCORD_TYPES])].forEach(function(t){ %><option><%= t %></option><% }) %></select>
+      </label>
+      <label>Subject ID <input type="text" name="subjectId" placeholder="Roblox / Discord ID" required></label>
+      <label>Subject name <input type="text" name="subjectName" required></label>
+    </div>
+    <label>Reason <input type="text" name="reason"></label>
+    <button class="btn">Create case</button>
+  </form>
+</div>
+
 <%- include("partials/foot") %>
