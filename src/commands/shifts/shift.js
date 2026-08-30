@@ -1,21 +1,17 @@
 import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, time } from "discord.js";
-import { erlcStaff, erlcAdmin } from "../../lib/checks.js";
 import { registerComponent } from "../../lib/components.js";
 import { COLORS, ok, err, EMOJI } from "../../lib/style.js";
-import { formatDuration, parseDuration } from "../../lib/util.js";
+import { formatDuration } from "../../lib/util.js";
 import {
   getActiveShift,
   startShift,
   endShift,
   listActiveShifts,
-  recentShifts,
   leaderboard,
   userShiftStats,
   weeklyTrend,
-  wipeShifts,
-  adjustShiftTime,
-  listShiftTypes,
 } from "../../lib/shifts.js";
+import { mainPanel } from "./_shiftadmin.js"; // also registers the `sa` component
 
 const WEEK = 7 * 24 * 60 * 60 * 1000;
 
@@ -219,30 +215,13 @@ export default {
     },
 
     admin: {
-      description: "Adjust or wipe a user's shift time (senior staff).",
+      description: "Open the shift-admin panel for a staff member.",
       defer: true,
+      ephemeral: true,
       permission: "shift.admin",
-      args: [
-        { name: "action", type: "string", required: true, description: "add | remove | wipe | list", choices: ["add", "remove", "wipe", "list"] },
-        { name: "user", type: "user", required: true, description: "Target staff member" },
-        { name: "amount", type: "string", required: false, description: "Duration for add/remove, e.g. 1h30m" },
-      ],
+      args: [{ name: "user", type: "user", required: true, description: "Target staff member" }],
       async execute(ctx) {
-        const { action, user } = ctx.args;
-        if (action === "list") {
-          const rows = await recentShifts(ctx.guild.id, user.id, 10);
-          if (!rows.length) return ctx.reply(`<@${user.id}> has no completed shifts.`);
-          const lines = rows.map((r) => `• ${time(Math.floor(r.started_at / 1000), "d")} — \`${formatDuration(r.duration_ms)}\` (\`${r.shift_type}\`)`);
-          return ctx.reply({ embeds: [new EmbedBuilder().setColor(COLORS.primary).setAuthor({ name: `Recent shifts · ${user.username}` }).setDescription(lines.join("\n"))] });
-        }
-        if (action === "wipe") {
-          const n = await wipeShifts(ctx.guild.id, user.id);
-          return ctx.reply(ok(`Wiped **${n}** shift record(s) for <@${user.id}>.`));
-        }
-        const ms = parseDuration(ctx.args.amount);
-        if (!ms) return ctx.reply({ content: err("Give a duration like `1h30m` for add/remove."), ephemeral: true });
-        await adjustShiftTime(ctx.guild.id, user.id, action === "remove" ? -ms : ms);
-        await ctx.reply(ok(`${action === "remove" ? "Removed" : "Added"} \`${formatDuration(ms)}\` ${action === "remove" ? "from" : "to"} <@${user.id}>'s logged time.`));
+        await ctx.reply({ ...(await mainPanel(ctx.guild, ctx.args.user.id)), ephemeral: true });
       },
     },
   },

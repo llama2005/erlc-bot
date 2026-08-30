@@ -56,6 +56,45 @@ export async function userShiftStats(guildId, userId, since, type = "") {
 export const wipeShifts = async (guildId, userId) =>
   (await query("DELETE FROM shifts WHERE guild_id=$1 AND user_id=$2", [guildId, userId])).rowCount;
 
+// --- per-shift admin editing (completed shifts only) ---
+export const getShift = (guildId, id) => one("SELECT * FROM shifts WHERE guild_id=$1 AND id=$2", [guildId, id]);
+
+/** One page of a user's completed shifts, newest first. Returns { rows, total }. */
+export async function userShiftsPage(guildId, userId, limit, offset) {
+  const rows = await many(
+    "SELECT * FROM shifts WHERE guild_id=$1 AND user_id=$2 AND ended_at IS NOT NULL ORDER BY started_at DESC LIMIT $3 OFFSET $4",
+    [guildId, userId, limit, offset],
+  );
+  const { count } = (await one(
+    "SELECT COUNT(*)::int AS count FROM shifts WHERE guild_id=$1 AND user_id=$2 AND ended_at IS NOT NULL",
+    [guildId, userId],
+  )) ?? { count: 0 };
+  return { rows, total: count };
+}
+
+/** Change a completed shift's duration by `deltaMs` (clamped ≥ 0); keeps ended_at consistent. */
+export const bumpShiftDuration = (guildId, id, deltaMs) =>
+  one(
+    `UPDATE shifts SET duration_ms = GREATEST(0, COALESCE(duration_ms,0) + $3),
+       ended_at = started_at + GREATEST(0, COALESCE(duration_ms,0) + $3)
+     WHERE guild_id=$1 AND id=$2 AND ended_at IS NOT NULL RETURNING *`,
+    [guildId, id, deltaMs],
+  );
+
+/** Set a completed shift's duration to exactly `ms` (clamped ≥ 0). */
+export const setShiftDuration = (guildId, id, ms) =>
+  one(
+    `UPDATE shifts SET duration_ms = GREATEST(0, $3), ended_at = started_at + GREATEST(0, $3)
+     WHERE guild_id=$1 AND id=$2 AND ended_at IS NOT NULL RETURNING *`,
+    [guildId, id, ms],
+  );
+
+export const setShiftTypeById = (guildId, id, type) =>
+  one("UPDATE shifts SET shift_type=$3 WHERE guild_id=$1 AND id=$2 RETURNING *", [guildId, id, type.toLowerCase()]);
+
+export const deleteShift = async (guildId, id) =>
+  (await query("DELETE FROM shifts WHERE guild_id=$1 AND id=$2 AND ended_at IS NOT NULL", [guildId, id])).rowCount;
+
 export async function adjustShiftTime(guildId, userId, deltaMs) {
   const now = Date.now();
   await query("INSERT INTO shifts (guild_id, user_id, shift_type, started_at, ended_at, duration_ms) VALUES ($1,$2,'default',$3,$3,$4)", [guildId, userId, now, deltaMs]);
