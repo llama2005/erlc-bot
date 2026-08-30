@@ -118,16 +118,33 @@ export class CommandManager {
     } else {
       await this.client.application.commands.set(payload);
       console.log(`Registered ${payload.length} global slash commands (~1h to appear).`);
-      // If a dev-guild registration was ever done, clear its now-duplicate guild-scoped set.
-      const stale = process.env.DEV_GUILD_ID;
-      if (stale) {
-        const guild = await this.client.guilds.fetch(stale).catch(() => null);
-        if (guild) {
-          await guild.commands.set([]).catch(() => {});
-          console.log(`Cleared stale guild-scoped commands in ${guild.name}.`);
-        }
+      await this.clearGuildScopedCommands();
+    }
+  }
+
+  /**
+   * A guild the bot was in before it switched to global registration still carries a
+   * guild-scoped copy of every command — users see each command twice. Sweep those.
+   * `set([])` on a guild with none is skipped (we check first), so after the one-time
+   * cleanup this costs one cheap fetch per guild at boot. Skipped past ~200 guilds:
+   * at that scale the single-guild registration path never applied.
+   */
+  async clearGuildScopedCommands() {
+    const guilds = [...this.client.guilds.cache.values()];
+    if (guilds.length > 200) return;
+    let cleared = 0;
+    for (const guild of guilds) {
+      try {
+        const existing = await guild.commands.fetch();
+        if (!existing.size) continue;
+        await guild.commands.set([]);
+        cleared++;
+        console.log(`Cleared ${existing.size} stale guild-scoped commands in ${guild.name}.`);
+      } catch {
+        /* missing applications.commands scope for that guild, or transient — ignore */
       }
     }
+    if (cleared) console.log(`Cleared guild-scoped commands in ${cleared} guild(s).`);
   }
 
   // ---- dispatch ----
