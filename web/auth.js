@@ -6,8 +6,8 @@ const COOKIE = "sess";
 const secure = /^https:/.test(config.links.dashboard || "");
 
 export function setSession(res, payload) {
-  const token = jwt.sign(payload, SECRET, { expiresIn: "7d" });
-  res.cookie(COOKIE, token, { httpOnly: true, secure, sameSite: "lax", maxAge: 7 * 864e5 });
+  const token = jwt.sign(payload, SECRET, { expiresIn: "24h" });
+  res.cookie(COOKIE, token, { httpOnly: true, secure, sameSite: "lax", maxAge: 864e5 });
 }
 
 export function clearSession(res) {

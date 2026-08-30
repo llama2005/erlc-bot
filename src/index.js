@@ -1,4 +1,4 @@
-import { Client, Events, GatewayIntentBits, Partials, ActivityType } from "discord.js";
+import { Client, Events, GatewayIntentBits, Partials, ActivityType, AuditLogEvent, EmbedBuilder, PermissionFlagsBits } from "discord.js";
 import { config, requireConfig } from "./config.js";
 import { pool, initSchema } from "./lib/pg.js";
 import { CommandManager } from "./lib/CommandManager.js";
@@ -61,9 +61,47 @@ client.once(Events.ClientReady, async (c) => {
   setInterval(sweepCaches, 30 * 60_000).unref?.();
 });
 
+async function welcomeGuild(guild) {
+  const dash = (config.links.dashboard || "").replace(/\/$/, "");
+  const embed = new EmbedBuilder()
+    .setColor(0x5865f2)
+    .setTitle(`Thanks for adding ${guild.client.user.username}!`)
+    .setDescription(
+      "ER:LC + Discord moderation, staff shifts, case logging, and more.\n\n" +
+        "**Get started:** run `/setup` to see what needs configuring, then `/config erlc-key` to connect your ER:LC private server.",
+    );
+  const links = [
+    dash && `[Dashboard](${dash})`,
+    config.links.support && `[Support](${config.links.support})`,
+    dash && `[Privacy](${dash}/privacy)`,
+  ].filter(Boolean);
+  if (links.length) embed.addFields({ name: "Links", value: links.join(" · ") });
+
+  // Prefer the system channel, else the first text channel we can actually post in.
+  const me = guild.members.me;
+  const canPost = (ch) =>
+    ch?.isTextBased?.() &&
+    ch.permissionsFor(me)?.has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.EmbedLinks]);
+  const target =
+    (canPost(guild.systemChannel) && guild.systemChannel) ||
+    guild.channels.cache.filter((ch) => canPost(ch)).sort((a, b) => a.rawPosition - b.rawPosition).first();
+
+  if (target) {
+    await target.send({ embeds: [embed] }).catch(() => {});
+    return;
+  }
+  // Nowhere to post — DM whoever added the bot.
+  const log = await guild
+    .fetchAuditLogs({ type: AuditLogEvent.BotAdd, limit: 5 })
+    .catch(() => null);
+  const inviter = log?.entries.find((e) => e.target?.id === guild.client.user.id)?.executor;
+  await inviter?.send({ embeds: [embed] }).catch(() => {});
+}
+
 client.on(Events.GuildCreate, (guild) => {
   ensureGuildConfig(guild.id).catch(() => {});
   syncBotGuild(guild).catch(() => {});
+  welcomeGuild(guild).catch((e) => console.error("welcome:", e.message));
 });
 client.on(Events.GuildDelete, (guild) => {
   removeBotGuild(guild.id).catch(() => {});

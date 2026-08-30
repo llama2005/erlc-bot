@@ -3,6 +3,7 @@ import { resolveErlcKey } from "../config.js";
 import { many, query } from "./pg.js";
 import { erlc } from "./erlc.js";
 import { getGuildConfig } from "./guildConfig.js";
+import { listPurgeableGuilds, purgeGuildData } from "./botGuilds.js";
 import { resolveSendable } from "./modlog.js";
 import { tickLoa } from "./loa.js";
 import { dueAutohints, bumpAutohint } from "./autohint.js";
@@ -95,6 +96,20 @@ async function runWeeklyQuota(client) {
 
 let quotaTimer = null;
 
+const PURGE_DAYS = Math.max(1, Number(process.env.GUILD_PURGE_DAYS || 30));
+
+async function runGuildPurge() {
+  const cutoff = Date.now() - PURGE_DAYS * 24 * 60 * 60 * 1000;
+  for (const { guild_id } of await listPurgeableGuilds(cutoff)) {
+    try {
+      const rows = await purgeGuildData(guild_id, { dropBotGuild: true });
+      console.log(`purged departed guild ${guild_id} (${rows} rows)`);
+    } catch (e) {
+      console.error(`guild purge (${guild_id}):`, e.message);
+    }
+  }
+}
+
 export function startScheduler(client) {
   if (timer) return;
   // Fast loop: time-sensitive, cheap, DB-filtered work.
@@ -109,10 +124,13 @@ export function startScheduler(client) {
 
   // Slow loop: the weekly report does per-user stat queries + a send per guild, so it gets
   // its own cadence and can never stretch the 30s tick when many guilds qualify at once.
-  const quotaTick = () => runWeeklyQuota(client).catch((e) => console.error("scheduler quota:", e.message));
-  quotaTimer = setInterval(quotaTick, 5 * 60_000);
+  const slowTick = async () => {
+    await runWeeklyQuota(client).catch((e) => console.error("scheduler quota:", e.message));
+    await runGuildPurge().catch((e) => console.error("scheduler purge:", e.message));
+  };
+  quotaTimer = setInterval(slowTick, 5 * 60_000);
   quotaTimer.unref?.();
-  setTimeout(quotaTick, 20_000);
+  setTimeout(slowTick, 20_000);
 
   console.log("Scheduler running (LOA / autohints / reminders / weekly quota)");
 }

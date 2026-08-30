@@ -102,6 +102,7 @@ export default {
     player: {
       description: "Detailed info on a player currently in the server.",
       defer: true,
+      ratelimit: { scope: "guild", uses: 4, per: 10_000 },
       args: [{ name: "player", type: "string", required: true, description: "In-game name", autocomplete: "erlcPlayers" }],
       async execute(ctx) {
         const key = requireKey(ctx);
@@ -134,6 +135,7 @@ export default {
     staff: {
       description: "Show staff currently in the server.",
       defer: true,
+      ratelimit: { scope: "guild", uses: 4, per: 10_000 },
       async execute(ctx) {
         const list = await erlc.players(requireKey(ctx));
         const staff = (Array.isArray(list) ? list : []).filter((p) => p.Permission && p.Permission !== "Normal");
@@ -148,6 +150,7 @@ export default {
     queue: {
       description: "Show players waiting in the join queue.",
       defer: true,
+      ratelimit: { scope: "guild", uses: 4, per: 10_000 },
       async execute(ctx) {
         const ids = await erlc.queue(requireKey(ctx));
         if (!Array.isArray(ids) || !ids.length) return ctx.reply("The queue is empty.");
@@ -165,6 +168,7 @@ export default {
     joinlogs: {
       description: "Recent joins and leaves.",
       defer: true,
+      ratelimit: { scope: "guild", uses: 4, per: 10_000 },
       async execute(ctx) {
         const logs = await erlc.joinLogs(requireKey(ctx));
         if (!Array.isArray(logs) || !logs.length) return ctx.reply("No join logs.");
@@ -179,6 +183,7 @@ export default {
     killlogs: {
       description: "Recent kill logs.",
       defer: true,
+      ratelimit: { scope: "guild", uses: 4, per: 10_000 },
       async execute(ctx) {
         const logs = await erlc.killLogs(requireKey(ctx));
         if (!Array.isArray(logs) || !logs.length) return ctx.reply("No kill logs.");
@@ -193,6 +198,7 @@ export default {
     commandlogs: {
       description: "Recent in-game commands run by staff.",
       defer: true,
+      ratelimit: { scope: "guild", uses: 4, per: 10_000 },
       async execute(ctx) {
         const logs = await erlc.commandLogs(requireKey(ctx));
         if (!Array.isArray(logs) || !logs.length) return ctx.reply("No command logs.");
@@ -207,6 +213,7 @@ export default {
     modcalls: {
       description: "Recent moderator calls.",
       defer: true,
+      ratelimit: { scope: "guild", uses: 4, per: 10_000 },
       async execute(ctx) {
         const logs = await erlc.modCalls(requireKey(ctx));
         if (!Array.isArray(logs) || !logs.length) return ctx.reply("No mod calls.");
@@ -225,6 +232,7 @@ export default {
     bans: {
       description: "List players banned from the server.",
       defer: true,
+      ratelimit: { scope: "guild", uses: 4, per: 10_000 },
       async execute(ctx) {
         const bans = await erlc.bans(requireKey(ctx));
         const entries = Array.isArray(bans) ? [] : Object.entries(bans || {});
@@ -242,6 +250,7 @@ export default {
     vehicles: {
       description: "List spawned vehicles.",
       defer: true,
+      ratelimit: { scope: "guild", uses: 4, per: 10_000 },
       async execute(ctx) {
         const list = await erlc.vehicles(requireKey(ctx));
         if (!Array.isArray(list) || !list.length) return ctx.reply("No vehicles spawned.");
@@ -294,6 +303,7 @@ export default {
     ip: {
       description: "Show the bot's public IP (for the api.erlc.gg command allowlist).",
       defer: true,
+      ratelimit: { scope: "guild", uses: 4, per: 10_000 },
       ephemeral: true,
       permission: "config",
       async execute(ctx) {

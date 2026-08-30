@@ -278,7 +278,18 @@ const MIGRATIONS = `
   ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS ingame_autolog BOOLEAN NOT NULL DEFAULT true;
   ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS ingame_warn_trigger TEXT NOT NULL DEFAULT 'warn';
   ALTER TABLE mod_cases ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'discord';
+  ALTER TABLE bot_guilds ADD COLUMN IF NOT EXISTS removed_at BIGINT;
 `;
+
+/**
+ * Every table keyed by guild_id — used by the guild-removal purge job and `/data delete`.
+ * `roblox_links` is deliberately excluded: verification is global, one link per user.
+ */
+export const GUILD_SCOPED_TABLES = [
+  "guild_config", "guild_counters", "mod_cases", "mod_types", "shift_types", "shifts",
+  "ban_requests", "erlc_cursor", "perm_groups", "loa", "appeals", "autohints", "reminders",
+  "button_role_panels", "tickets", "erlc_status", "message_templates",
+];
 
 export async function initSchema() {
   await pool.query(SCHEMA);

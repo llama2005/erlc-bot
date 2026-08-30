@@ -1,0 +1,59 @@
+<%- include("partials/head", { title: "Privacy Policy" }) %>
+<article class="legal">
+  <h1>Privacy Policy</h1>
+  <p class="muted">Last updated: <%= updated %></p>
+
+  <p>
+    This policy explains what data <strong>ER:LC Bot</strong> ("the bot") stores when you add it
+    to a Discord server or use its dashboard, and how that data is handled.
+  </p>
+
+  <h2>What we store</h2>
+  <ul>
+    <li><strong>Server configuration</strong> — channel and role IDs you set, feature toggles, your
+      prefix, and the <strong>ER:LC private-server API key</strong> you provide via <code>/config erlc-key</code>
+      or the dashboard. The key is stored so the bot can talk to your ER:LC server on your behalf.</li>
+    <li><strong>Moderation records</strong> — cases created through the bot (warns, kicks, bans, jails,
+      notes, ban requests, appeals): the target's Roblox and/or Discord ID and name, the moderator's
+      Discord ID, the reason, timestamps, and whether the in-game action succeeded.</li>
+    <li><strong>Staff activity</strong> — shift start/stop times, shift types, and leave-of-absence records.</li>
+    <li><strong>Roblox links</strong> — if a user runs <code>/verify</code>, the mapping between their
+      Discord ID and Roblox ID. This link is global (it works in every server that has the bot).</li>
+    <li><strong>Operational data</strong> — support tickets, reminders you set, auto-hint messages,
+      button-role panels, and the last-seen timestamps the bot uses to avoid double-posting logs.</li>
+    <li><strong>Dashboard sessions</strong> — when you log in with Discord we read your user ID,
+      username, avatar, and the list of servers you can manage. This is stored only in a signed,
+      HTTP-only cookie in your browser (valid 24 hours) and is not written to our database.</li>
+  </ul>
+
+  <h2>What we do not do</h2>
+  <ul>
+    <li>We do not read or store message content, DMs, or voice data.</li>
+    <li>We do not sell, rent, or share your data with third parties.</li>
+    <li>We do not use your data for advertising or profiling.</li>
+  </ul>
+
+  <h2>Third parties</h2>
+  <p>
+    To function, the bot sends the relevant data to: the <strong>Discord API</strong> (to send
+    messages and read roles/channels), the <strong>PRC ER:LC API</strong> (<code>api.erlc.gg</code>,
+    to run and read your server), and public <strong>Roblox APIs</strong> (to resolve usernames and
+    avatars). Data is hosted on managed infrastructure (currently Render and Neon Postgres).
+  </p>
+
+  <h2>Retention &amp; deletion</h2>
+  <ul>
+    <li>When the bot is removed from a server, that server's data is kept for <strong>30 days</strong>
+      (so a re-invite doesn't lose everything) and then <strong>permanently deleted</strong>, including
+      the stored ER:LC key.</li>
+    <li>To have a server's data deleted sooner, a server administrator can request it in the
+      <a href="<%= support || '#' %>">support server</a>; it will be wiped promptly.</li>
+    <li>Roblox verification links are removed when a user runs <code>/unverify</code>.</li>
+  </ul>
+
+  <h2>Contact</h2>
+  <p>Questions or requests: <a href="<%= support || '#' %>">join the support server</a>.</p>
+
+  <p><a href="/" class="btn ghost sm">Home</a> <a href="/terms" class="btn ghost sm">Terms</a></p>
+</article>
+<%- include("partials/foot") %>

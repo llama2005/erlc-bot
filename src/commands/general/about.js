@@ -1,7 +1,11 @@
 import os from "node:os";
 import { EmbedBuilder, version as djsVersion } from "discord.js";
+import { config } from "../../config.js";
 import { COLORS } from "../../lib/style.js";
 import { formatDuration } from "../../lib/util.js";
+
+const inviteUrl = (clientId) =>
+  `https://discord.com/oauth2/authorize?client_id=${clientId}&scope=bot%20applications.commands&permissions=1101927862374`;
 
 export default {
   name: "about",
@@ -23,6 +27,17 @@ export default {
         { name: "discord.js", value: `v${djsVersion}`, inline: true },
         { name: "Host", value: `${os.type()} ${os.arch()} · ${os.cpus().length} cores`, inline: false },
       );
+
+    const dash = (config.links.dashboard || "").replace(/\/$/, "");
+    const links = [
+      `[Invite](${inviteUrl(c.user.id)})`,
+      dash && `[Dashboard](${dash})`,
+      config.links.support && `[Support](${config.links.support})`,
+      dash && `[Privacy](${dash}/privacy)`,
+      dash && `[Terms](${dash}/terms)`,
+    ].filter(Boolean);
+    if (links.length) embed.addFields({ name: "Links", value: links.join(" · ") });
+
     await ctx.reply({ embeds: [embed] });
   },
 };

@@ -61,6 +61,8 @@ export async function warmGuildConfigs() {
 /** Ensure one guild is in the cache (call before handling its interactions). */
 export async function ensureGuildConfig(guildId) {
   if (!guildId || cache.has(guildId)) return;
+  // Materialise the row so "guilds that have added the bot" is a real, queryable set.
+  await query("INSERT INTO guild_config (guild_id) VALUES ($1) ON CONFLICT DO NOTHING", [guildId]).catch(() => {});
   await refreshGuildConfig(guildId);
 }
 
@@ -98,6 +100,11 @@ export async function setGuildConfig(guildId, patch) {
   cache.set(guildId, next);
   await notify("guild_config", guildId).catch(() => {});
   return next;
+}
+
+/** Forget one guild's cached config (e.g. after a data wipe) so the next read reloads it. */
+export function forgetGuildConfig(guildId) {
+  cache.delete(guildId);
 }
 
 /** Drop cached config for guilds the bot is no longer in (called on GuildDelete + a periodic sweep). */

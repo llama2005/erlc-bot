@@ -64,6 +64,21 @@ d.botIdentity().then((u) => {
   app.locals.botAvatar = d.botAvatarUrl(u) || "";
 });
 
+// Per-guild budget for dashboard-initiated ER:LC API calls, so one server's dashboard
+// activity can't burn the shared PRC key for everyone.
+const erlcBudget = new Map(); // guildId -> { count, reset }
+function erlcAllowed(guildId) {
+  const now = Date.now();
+  let b = erlcBudget.get(guildId);
+  if (!b || now >= b.reset) {
+    b = { count: 0, reset: now + 10_000 };
+    erlcBudget.set(guildId, b);
+  }
+  if (b.count >= 6) return false;
+  b.count += 1;
+  return true;
+}
+
 // ---- auth ----
 const states = new Map();
 app.get("/auth/login", (req, res) => {
@@ -103,6 +118,14 @@ app.get("/", async (req, res) => {
   res.render("index", { user: readSession(req), inviteUrl: d.inviteUrl(), stats: { guilds: guilds.length, commands: 46 } });
 });
 
+// ---- legal (public) ----
+const LEGAL_UPDATED = "2026-08-30";
+for (const page of ["privacy", "terms"]) {
+  app.get(`/${page}`, (req, res) =>
+    res.render(page, { user: readSession(req), updated: LEGAL_UPDATED, support: config.links.support || "" }),
+  );
+}
+
 // ---- dashboard ----
 app.get("/dashboard", requireAuth, async (req, res) => {
   const botGuilds = new Set((await listBotGuilds()).map((g) => g.guild_id));
@@ -115,11 +138,16 @@ app.get("/dashboard", requireAuth, async (req, res) => {
 
 async function requireGuildAdmin(req, res, next) {
   const guildId = req.params.guildId;
+  // Fast pre-filter from the (possibly stale) OAuth session…
   const g = (req.user.guilds || []).find((x) => x.id === guildId);
   if (!g || !d.canManage(g.permissions))
     return res.status(403).render("error", { user: req.user, message: "You don't have Manage Server in that guild." });
   const bg = await getBotGuild(guildId);
   if (!bg) return res.status(404).render("error", { user: req.user, message: "The bot isn't in that server yet." });
+  // …then the authoritative live check (5-min cache): current roles, or guild ownership.
+  const live = String(bg.owner_id) === String(req.user.id) || (await d.userManagesGuild(guildId, req.user.id));
+  if (!live)
+    return res.status(403).render("error", { user: req.user, message: "You no longer have Manage Server in that guild." });
   req.cfg = await refreshGuildConfig(guildId); // always fresh from the DB for the dashboard
   req.guild = { id: guildId, name: bg.name, icon: bg.icon };
   const [loaP, appealsP, banreqsP] = await Promise.all([
@@ -150,6 +178,7 @@ app.get("/dashboard/:guildId/overview", requireAuth, requireGuildAdmin, async (r
     (async () => {
       const key = resolveErlcKey(cfg);
       if (!key || !cfg.statusChannel) return null;
+      if (!erlcAllowed(req.guild.id)) return null;
       return erlc.server(key).catch(() => "offline");
     })(),
   ]);
@@ -366,7 +395,7 @@ app.post("/dashboard/:guildId/appeals/:id/:decision", requireAuth, requireGuildA
     if (approve) {
       const key = resolveErlcKey(req.cfg);
       let executed = false;
-      if (key && a.roblox_name) {
+      if (key && a.roblox_name && erlcAllowed(req.guild.id)) {
         try {
           await erlc.command(key, `:unban ${a.roblox_name}`);
           executed = true;
@@ -518,7 +547,7 @@ app.post("/dashboard/:guildId/banreqs/:id/:decision", requireAuth, requireGuildA
       const key = resolveErlcKey(req.cfg);
       let executed = true;
       try {
-        if (!key) throw new ErlcError("no key");
+        if (!key || !erlcAllowed(req.guild.id)) throw new ErlcError("no key");
         await erlc.command(key, `:ban ${request.roblox_name}`);
       } catch (e) {
         if (e instanceof ErlcError) executed = false;

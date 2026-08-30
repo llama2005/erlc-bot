@@ -70,6 +70,34 @@ export async function roleInGuild(guildId, roleId) {
   return ids ? ids.has(String(roleId)) : false;
 }
 
+// Authoritative "can this user manage this guild?" — checked live against Discord (cached 5min)
+// so a demoted/removed admin loses dashboard access without needing their session to expire.
+const MANAGE_GUILD_BIT = 1n << 5n;
+const ADMINISTRATOR_BIT = 1n << 3n;
+const manageCache = new Map(); // `${guildId}:${userId}` -> { ok: boolean, at: number }
+const MANAGE_TTL = 5 * 60 * 1000;
+
+export async function userManagesGuild(guildId, userId) {
+  const cacheKey = `${guildId}:${userId}`;
+  const hit = manageCache.get(cacheKey);
+  if (hit && Date.now() - hit.at < MANAGE_TTL) return hit.ok;
+
+  let ok = false;
+  try {
+    const [member, roles] = await Promise.all([getGuildMember(guildId, userId), getGuildRoles(guildId)]);
+    if (member && Array.isArray(roles)) {
+      const held = new Set([...(member.roles || []), guildId]); // include @everyone (id === guildId)
+      let perms = 0n;
+      for (const r of roles) if (held.has(String(r.id))) perms |= BigInt(r.permissions || "0");
+      ok = (perms & ADMINISTRATOR_BIT) === ADMINISTRATOR_BIT || (perms & MANAGE_GUILD_BIT) === MANAGE_GUILD_BIT;
+    }
+  } catch {
+    ok = hit?.ok ?? false; // transient API failure — keep the last known answer
+  }
+  manageCache.set(cacheKey, { ok, at: Date.now() });
+  return ok;
+}
+
 const nameCache = new Map(); // `${guild}:${user}` -> { name, at }
 const NAME_TTL = 10 * 60 * 1000;
 

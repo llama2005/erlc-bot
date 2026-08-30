@@ -75,6 +75,11 @@ export async function startPermSync() {
   await listen("perm_groups", (guildId) => loadGroups(guildId).catch(() => {}));
 }
 
+/** Forget one guild's cached perm groups (e.g. after a data wipe). */
+export function forgetPermGroups(guildId) {
+  cache.delete(guildId);
+}
+
 /** Drop cached perm groups for guilds the bot is no longer in. */
 export function prunePermCache(activeGuildIds) {
   const keep = new Set(activeGuildIds);

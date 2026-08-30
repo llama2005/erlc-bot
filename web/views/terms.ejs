@@ -1,0 +1,48 @@
+<%- include("partials/head", { title: "Terms of Service" }) %>
+<article class="legal">
+  <h1>Terms of Service</h1>
+  <p class="muted">Last updated: <%= updated %></p>
+
+  <p>By adding <strong>ER:LC Bot</strong> to a Discord server or using its dashboard, you agree to these terms.</p>
+
+  <h2>Acceptable use</h2>
+  <ul>
+    <li>You must comply with the <a href="https://discord.com/terms">Discord Terms of Service</a>,
+      the <a href="https://discord.com/guidelines">Discord Community Guidelines</a>, and the
+      Police Roleplay Community / ER:LC terms for any private server you connect.</li>
+    <li>Only connect an ER:LC API key for a server you own or are authorised to manage.</li>
+    <li>Do not use the bot to harass, spam, or abuse other users, or to evade Discord or PRC rate
+      limits and restrictions.</li>
+    <li>Do not attempt to disrupt, overload, reverse-engineer for abuse, or gain unauthorised access
+      to the bot or its infrastructure.</li>
+  </ul>
+
+  <h2>Availability</h2>
+  <p>
+    The bot is provided "as is", with no guarantee of uptime, and may change, break, or be
+    discontinued at any time. Automated in-game actions depend on the Discord and PRC APIs and can
+    fail for reasons outside our control.
+  </p>
+
+  <h2>Liability</h2>
+  <p>
+    To the maximum extent permitted by law, the operators are not liable for any loss or damage
+    arising from use of the bot, including lost data, missed moderation actions, or actions taken
+    (or not taken) in your Discord server or ER:LC server.
+  </p>
+
+  <h2>Enforcement</h2>
+  <p>
+    We may restrict or block any server or user that violates these terms or abuses the service,
+    without notice.
+  </p>
+
+  <h2>Changes</h2>
+  <p>These terms may be updated; continued use after a change means you accept it.</p>
+
+  <h2>Contact</h2>
+  <p><a href="<%= support || '#' %>">Join the support server</a>.</p>
+
+  <p><a href="/" class="btn ghost sm">Home</a> <a href="/privacy" class="btn ghost sm">Privacy</a></p>
+</article>
+<%- include("partials/foot") %>
