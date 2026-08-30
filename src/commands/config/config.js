@@ -8,6 +8,7 @@ const SETTINGS = {
   prefix: { field: "prefix", kind: "prefix", label: "Prefix" },
   ai: { field: "aiEnabled", kind: "bool", label: "AI" },
   "reason-required": { field: "reasonRequired", kind: "bool", label: "Require reason" },
+  "external-log": { field: "logExternalModeration", kind: "bool", label: "Log external Discord moderation" },
   modlog: { field: "modlogChannel", kind: "channel", label: "Modlog channel" },
   cmdlog: { field: "commandLogChannel", kind: "channel", label: "Bot command log" },
   banreq: { field: "banreqChannel", kind: "channel", label: "Ban-request channel" },

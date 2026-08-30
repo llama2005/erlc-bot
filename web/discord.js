@@ -176,6 +176,6 @@ export function inviteUrl() {
   const u = new URL("https://discord.com/oauth2/authorize");
   u.searchParams.set("client_id", config.discord.clientId);
   u.searchParams.set("scope", "bot applications.commands");
-  u.searchParams.set("permissions", "1101927862374"); // kick/ban/timeout/manageRoles/manageMessages/embed/etc
+  u.searchParams.set("permissions", "1101927862502"); // kick/ban/timeout/manageRoles/manageMessages/embed/viewAuditLog/etc
   return u.toString();
 }

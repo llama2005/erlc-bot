@@ -8,6 +8,7 @@ import { startScheduler } from "./lib/scheduler.js";
 import { warmGuildConfigs, ensureGuildConfig, startConfigSync, pruneGuildConfigCache } from "./lib/guildConfig.js";
 import { startPermSync, prunePermCache } from "./lib/permissions.js";
 import { warmErlcServers, startErlcServerSync, pruneErlcServerCache } from "./lib/erlcServers.js";
+import { registerExternalModlog } from "./lib/externalModlog.js";
 import { prunePlayerCache } from "./lib/autocomplete.js";
 import { syncBotGuild, removeBotGuild, syncAllBotGuilds } from "./lib/botGuilds.js";
 
@@ -53,6 +54,7 @@ client.once(Events.ClientReady, async (c) => {
   await syncAllBotGuilds(c).catch((e) => console.error("botGuilds sync failed:", e.message));
   startErlcPoller(c);
   startScheduler(c);
+  registerExternalModlog(c);
 
   // Evict in-memory per-guild caches for guilds the bot has left.
   const sweepCaches = () => {

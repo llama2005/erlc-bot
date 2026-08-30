@@ -261,6 +261,7 @@ app.post("/dashboard/:guildId", requireAuth, requireGuildAdmin, async (req, res)
     prefix: (b.prefix || "!").slice(0, 5),
     aiEnabled: b.aiEnabled === "on",
     reasonRequired: b.reasonRequired === "on",
+    logExternalModeration: b.logExternalModeration === "on",
     modlogChannel: orNull(b.modlogChannel),
     commandLogChannel: orNull(b.commandLogChannel),
     banreqChannel: orNull(b.banreqChannel),

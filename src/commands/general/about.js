@@ -5,7 +5,7 @@ import { COLORS } from "../../lib/style.js";
 import { formatDuration } from "../../lib/util.js";
 
 const inviteUrl = (clientId) =>
-  `https://discord.com/oauth2/authorize?client_id=${clientId}&scope=bot%20applications.commands&permissions=1101927862374`;
+  `https://discord.com/oauth2/authorize?client_id=${clientId}&scope=bot%20applications.commands&permissions=1101927862502`;
 
 export default {
   name: "about",
