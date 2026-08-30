@@ -293,6 +293,8 @@ const MIGRATIONS = `
   ALTER TABLE mod_cases ADD COLUMN IF NOT EXISTS erlc_server_id BIGINT;
   ALTER TABLE autohints ADD COLUMN IF NOT EXISTS server_id BIGINT;
   ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS erlc_ban_all_servers BOOLEAN NOT NULL DEFAULT false;
+  ALTER TABLE mod_cases ADD COLUMN IF NOT EXISTS log_channel_id TEXT;
+  ALTER TABLE mod_cases ADD COLUMN IF NOT EXISTS log_message_id TEXT;
 
   DROP TABLE IF EXISTS erlc_cursor;
   DROP TABLE IF EXISTS erlc_status;

@@ -1,5 +1,6 @@
 import { createCase, subjectStats } from "../../lib/cases.js";
 import { postToModlog } from "../../lib/modlog.js";
+import { logCase } from "../../lib/caseLog.js";
 import { historyView } from "../../lib/historyView.js";
 import { caseEmbed, ok, err, actionVerb } from "../../lib/style.js";
 import { formatDuration } from "../../lib/util.js";
@@ -61,7 +62,7 @@ async function act(ctx, { type, user, reason, durationMs = null, perform, dm = t
       footer: notes.join(" · ") || undefined,
     }).setDescription(`### <@${user.id}>\n\`${user.id}\``);
 
-  const log = await postToModlog(ctx.guild, make()).catch(() => ({ ok: false, reason: "error" }));
+  const log = await logCase(ctx.guild, c, make()).catch(() => ({ ok: false, reason: "error" }));
   if (log.reason) notes.push(`couldn't post to the modlog channel — ${log.reason}`);
 
   await ctx.reply({ embeds: [make()] }).catch((e) => console.error(`case #${c.case_number} reply failed:`, e.message));

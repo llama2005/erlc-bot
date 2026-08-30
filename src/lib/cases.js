@@ -61,6 +61,9 @@ export const getLastCase = (g) => one("SELECT * FROM mod_cases WHERE guild_id=$1
 export const getRecentCases = (g, limit = 25) =>
   many("SELECT * FROM mod_cases WHERE guild_id=$1 ORDER BY case_number DESC LIMIT $2", [g, limit]);
 
+export const attachCaseMessage = (g, n, channelId, messageId) =>
+  query("UPDATE mod_cases SET log_channel_id=$3, log_message_id=$4 WHERE guild_id=$1 AND case_number=$2", [g, n, channelId, messageId]);
+
 export const editReason = async (g, n, r) =>
   (await query("UPDATE mod_cases SET reason=$1 WHERE guild_id=$2 AND case_number=$3", [r, g, n])).rowCount > 0;
 export const editType = async (g, n, t) =>

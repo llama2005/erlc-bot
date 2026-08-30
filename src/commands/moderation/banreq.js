@@ -6,7 +6,7 @@ import { createCase } from "../../lib/cases.js";
 import { getGuildConfig } from "../../lib/guildConfig.js";
 import { defaultServer, getServers } from "../../lib/erlcServers.js";
 import { registerComponent } from "../../lib/components.js";
-import { sendModlog } from "../../lib/modlog.js";
+import { logCase, renderCaseEmbed } from "../../lib/caseLog.js";
 import {
   createBanRequest,
   getBanRequest,
@@ -97,15 +97,7 @@ registerComponent("banreq", async (interaction, [action, idStr]) => {
   await interaction.message.edit({ embeds: [base], components: [buttons(id, true)] });
 
   const guild = interaction.client.guilds.cache.get(req.guild_id);
-  if (guild)
-    await sendModlog(guild, {
-      action: "ban",
-      target: { tag: req.roblox_name, id: req.roblox_id },
-      moderator: { tag: "approved", id: interaction.user.id },
-      reason: req.reason,
-      extra: `Ban request #${id} · Case #${c.case_number}`,
-      url: `https://www.roblox.com/users/${req.roblox_id}/profile`,
-    });
+  if (guild) await logCase(guild, c, await renderCaseEmbed(guild, c)).catch(() => {});
 });
 
 export default {

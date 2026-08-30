@@ -3,7 +3,7 @@ import { resolvePlayer, pm, notifyText } from "../../lib/erlcModeration.js";
 import { resolveServer, getServers } from "../../lib/erlcServers.js";
 import { createCase, subjectStats } from "../../lib/cases.js";
 import { getModType } from "../../lib/modTypes.js";
-import { postToModlog } from "../../lib/modlog.js";
+import { logCase } from "../../lib/caseLog.js";
 import { headshotUrl } from "../../lib/roblox.js";
 import { caseEmbed, err } from "../../lib/style.js";
 import { sleep } from "../../lib/util.js";
@@ -125,7 +125,7 @@ export async function runAction(ctx, type, { reason, ingame } = {}) {
     });
 
   // Post to the modlog first so a reply failure never loses the record.
-  const log = await postToModlog(ctx.guild, make(notes)).catch(() => ({ ok: false, reason: "error" }));
+  const log = await logCase(ctx.guild, c, make(notes)).catch(() => ({ ok: false, reason: "error" }));
   if (log.reason) notes.push(`couldn't post to the modlog channel — ${log.reason}`);
 
   try {

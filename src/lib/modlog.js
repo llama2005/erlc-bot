@@ -35,22 +35,22 @@ export const resolveChannel = async (client, id, expectGuildId = null) =>
  * @returns {Promise<{ ok: boolean, reason: string|null }>} ok=true if delivered;
  *          reason is null when simply not configured, else a human-readable problem.
  */
-export async function postToModlog(guild, embed) {
-  if (!guild) return { ok: false, reason: null };
+export async function postToModlog(guild, embed, { components = [] } = {}) {
+  if (!guild) return { ok: false, reason: null, message: null };
   const cfg = getGuildConfig(guild.id);
-  if (!cfg.modlogChannel) return { ok: false, reason: null };
+  if (!cfg.modlogChannel) return { ok: false, reason: null, message: null };
 
   const { channel, reason } = await resolveSendable(guild.client, cfg.modlogChannel, guild.id);
   if (!channel) {
     console.warn(`modlog post failed for guild ${guild.id}: ${reason}`);
-    return { ok: false, reason };
+    return { ok: false, reason, message: null };
   }
   try {
-    await channel.send({ embeds: [embed] });
-    return { ok: true, reason: null };
+    const message = await channel.send({ embeds: [embed], components });
+    return { ok: true, reason: null, message };
   } catch (err) {
     console.warn(`modlog send threw for guild ${guild.id}: ${err.message}`);
-    return { ok: false, reason: `send failed (${err.message})` };
+    return { ok: false, reason: `send failed (${err.message})`, message: null };
   }
 }
 

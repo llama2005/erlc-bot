@@ -7,6 +7,7 @@ import { getLinkByDiscord } from "../../lib/links.js";
 import { userByUsername } from "../../lib/roblox.js";
 import { getSubjectCases } from "../../lib/cases.js";
 import { createCase } from "../../lib/cases.js";
+import { logCase, renderCaseEmbed } from "../../lib/caseLog.js";
 import { erlc, ErlcError } from "../../lib/erlc.js";
 import { getGuildConfig } from "../../lib/guildConfig.js";
 import { defaultServer, getServers } from "../../lib/erlcServers.js";
@@ -65,6 +66,8 @@ registerComponent("appeal", async (interaction, [action, idStr]) => {
       });
       base.addFields({ name: "Case", value: `#${c.case_number}`, inline: true });
       note = ran > 0 ? "" : " (ER:LC not connected — logged only)";
+      const g = interaction.client.guilds.cache.get(a.guild_id);
+      if (g) await logCase(g, c, await renderCaseEmbed(g, c)).catch(() => {});
     } catch (e) {
       if (!(e instanceof ErlcError)) throw e;
       note = " (in-game :unban failed)";

@@ -6,7 +6,7 @@ import { userByUsername } from "./roblox.js";
 import { createCase } from "./cases.js";
 import { subjectStats } from "./cases.js";
 import { headshotUrl } from "./roblox.js";
-import { postToModlog } from "./modlog.js";
+import { logCase } from "./caseLog.js";
 import { caseEmbed } from "./style.js";
 
 const ACTION_RE = /^:(kick|ban|unban|jail|unjail)\s+(.+?)\s*$/i;
@@ -107,7 +107,7 @@ export async function autologCommandEntries(client, guildId, serverId, entries, 
     }
 
     const guild = client.guilds.cache.get(guildId);
-    if (guild) await postToModlog(guild, embed).catch(() => {});
+    if (guild) await logCase(guild, c, embed).catch(() => {});
     created++;
   }
   return created;
