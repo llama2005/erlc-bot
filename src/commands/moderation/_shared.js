@@ -3,6 +3,8 @@ import { resolvePlayer, pm, notifyText } from "../../lib/erlcModeration.js";
 import { resolveServer, getServers } from "../../lib/erlcServers.js";
 import { createCase, subjectStats } from "../../lib/cases.js";
 import { getModType } from "../../lib/modTypes.js";
+import { fileBanRequest } from "../../lib/banRequests.js";
+import { hasPermission } from "../../lib/permissions.js";
 import { logCase } from "../../lib/caseLog.js";
 import { headshotUrl } from "../../lib/roblox.js";
 import { caseEmbed, err } from "../../lib/style.js";
@@ -21,6 +23,10 @@ export const erlcKeyOrNull = async (ctx) => (await erlcServerOrNull(ctx))?.api_k
 const REQUIRES_ONLINE = new Set(["kick", "jail", "unjail"]);
 const SENDS_PM = new Set(["warn", "kick", "ban", "jail", "unjail"]);
 const PROPAGATES = new Set(["ban", "unban"]); // may run on every server when erlcBanAllServers is on
+const BOLO_TYPES = new Set(["kick", "ban"]); // `--bolo` also files a ban request for these
+
+/** Optional flag for /kick and /ban — also file a ban request for senior staff. */
+export const BOLO_ARG = { name: "bolo", type: "bool", required: false, description: "Also file a ban request for senior staff to review" };
 
 export async function statSummary(guildId, robloxId) {
   const stats = await subjectStats(guildId, "roblox", robloxId);
@@ -105,6 +111,28 @@ export async function runAction(ctx, type, { reason, ingame } = {}) {
     executed = propagated > 0;
   }
 
+  // --bolo → also file a ban request for the same player
+  let boloNote = null;
+  if (ctx.args?.bolo && BOLO_TYPES.has(type)) {
+    if (!(await hasPermission(ctx, "mod.banreq"))) {
+      boloNote = "bolo skipped — you can't file ban requests";
+    } else {
+      const r = await fileBanRequest({
+        guild: ctx.guild,
+        client: ctx.client,
+        robloxId: target.id,
+        robloxName: target.name,
+        reason,
+        requestedBy: ctx.author.id,
+        sourceCase: c.case_number,
+      }).catch(() => ({ skipped: "error" }));
+      boloNote =
+        r.req ? `ban request #${r.req.id} filed`
+        : r.skipped === "pending" ? "a ban request is already pending"
+        : "bolo skipped — no ban-request or modlog channel set";
+    }
+  }
+
   const headshot = await headshotUrl(target.id).catch(() => null);
   const history = await statSummary(ctx.guild.id, target.id);
   const notes = [];
@@ -112,6 +140,7 @@ export async function runAction(ctx, type, { reason, ingame } = {}) {
   if (notified === false) notes.push("in-game PM failed");
   if (cmd && !executed) notes.push("in-game command failed — case still logged");
   if (cmd && propagated > 1) notes.push(`applied on ${propagated} servers`);
+  if (boloNote) notes.push(boloNote);
 
   const make = (footerNotes) =>
     caseEmbed({

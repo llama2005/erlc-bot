@@ -1,35 +1,25 @@
-import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
+import { EmbedBuilder } from "discord.js";
 import { erlc, ErlcError } from "../../lib/erlc.js";
 import { resolvePlayer } from "../../lib/erlcModeration.js";
-import { headshotUrl } from "../../lib/roblox.js";
 import { createCase } from "../../lib/cases.js";
 import { getGuildConfig } from "../../lib/guildConfig.js";
 import { defaultServer, getServers } from "../../lib/erlcServers.js";
 import { registerComponent } from "../../lib/components.js";
 import { logCase, renderCaseEmbed } from "../../lib/caseLog.js";
 import {
-  createBanRequest,
   getBanRequest,
-  attachMessage,
   resolveBanRequest,
   hasPendingRequest,
+  fileBanRequest,
+  banRequestButtons,
 } from "../../lib/banRequests.js";
 import { hasPermissionInteraction } from "../../lib/permissions.js";
 import { reportOffDuty } from "../../lib/dutyWatch.js";
 import { PLAYER_ARG } from "./_shared.js";
 
-const PENDING_COLOR = 0x3498db;
-
 const keyForGuild = (guildId) => defaultServer(guildId)?.api_key ?? null;
 
 const isApprover = (interaction) => hasPermissionInteraction(interaction, "mod.banreq.approve");
-
-function buttons(id, disabled = false) {
-  return new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId(`banreq:approve:${id}`).setLabel("Approve").setStyle(ButtonStyle.Success).setDisabled(disabled),
-    new ButtonBuilder().setCustomId(`banreq:deny:${id}`).setLabel("Deny").setStyle(ButtonStyle.Danger).setDisabled(disabled),
-  );
-}
 
 registerComponent("banreq", async (interaction, [action, idStr]) => {
   const id = Number(idStr);
@@ -56,7 +46,7 @@ registerComponent("banreq", async (interaction, [action, idStr]) => {
   if (action === "deny") {
     await resolveBanRequest(id, "denied", interaction.user.id);
     base.setColor(0xe74c3c).setTitle("Ban request — DENIED").addFields({ name: "Denied by", value: `<@${interaction.user.id}>` });
-    return interaction.message.edit({ embeds: [base], components: [buttons(id, true)] });
+    return interaction.message.edit({ embeds: [base], components: [banRequestButtons(id, true)] });
   }
 
   // approve → execute the ban + open a case
@@ -94,7 +84,7 @@ registerComponent("banreq", async (interaction, [action, idStr]) => {
     .setTitle("Ban request — APPROVED")
     .addFields({ name: "Approved by", value: `<@${interaction.user.id}>`, inline: true }, { name: "Case", value: `#${c.case_number}`, inline: true });
   if (!executed) base.setFooter({ text: "in-game :ban failed — case logged anyway" });
-  await interaction.message.edit({ embeds: [base], components: [buttons(id, true)] });
+  await interaction.message.edit({ embeds: [base], components: [banRequestButtons(id, true)] });
 
   const guild = interaction.client.guilds.cache.get(req.guild_id);
   if (guild) await logCase(guild, c, await renderCaseEmbed(guild, c)).catch(() => {});
@@ -119,38 +109,18 @@ export default {
     if (await hasPendingRequest(ctx.guild.id, target.id))
       return ctx.reply({ content: `There's already a pending ban request for **${target.name}**.`, ephemeral: true });
 
-    const req = await createBanRequest({
-      guildId: ctx.guild.id,
+    const r = await fileBanRequest({
+      guild: ctx.guild,
+      client: ctx.client,
       robloxId: target.id,
       robloxName: target.name,
       reason: ctx.args.reason,
       requestedBy: ctx.author.id,
+      fallbackChannelId: ctx.channel.id,
     });
+    if (r.skipped === "no-channel")
+      return ctx.reply({ content: "Couldn't post the ban request — set a ban-request or modlog channel with `/config banreq #channel`.", ephemeral: true });
 
-    const cfg = ctx.config;
-    const destId = cfg.banreqChannel || cfg.modlogChannel;
-    const dest =
-      (destId && (ctx.guild.channels.cache.get(destId) ?? (await ctx.client.channels.fetch(destId).catch(() => null)))) ||
-      ctx.channel;
-
-    const embed = new EmbedBuilder()
-      .setColor(PENDING_COLOR)
-      .setTitle("Ban request — pending")
-      .setURL(`https://www.roblox.com/users/${target.id}/profile`)
-      .setThumbnail(await headshotUrl(target.id).catch(() => null))
-      .setDescription(`**[${target.name}](https://www.roblox.com/users/${target.id}/profile)**  \`${target.id}\``)
-      .addFields(
-        { name: "Reason", value: ctx.args.reason },
-        { name: "Requested by", value: `<@${ctx.author.id}>`, inline: true },
-        { name: "Request", value: `#${req.id}`, inline: true },
-      );
-
-    const msg = await dest.send({ embeds: [embed], components: [buttons(req.id)] });
-    await attachMessage(req.id, msg.id, dest.id);
-
-    await ctx.reply({
-      content: dest.id === ctx.channel.id ? "Ban request posted for approval." : `Ban request #${req.id} sent to <#${dest.id}>.`,
-      ephemeral: true,
-    });
+    await ctx.reply({ content: `Ban request #${r.req.id} filed for approval.`, ephemeral: true });
   },
 };

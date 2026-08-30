@@ -7,9 +7,11 @@ import { createCase } from "./cases.js";
 import { subjectStats } from "./cases.js";
 import { headshotUrl } from "./roblox.js";
 import { logCase } from "./caseLog.js";
+import { fileBanRequest } from "./banRequests.js";
 import { caseEmbed } from "./style.js";
 
 const ACTION_RE = /^:(kick|ban|unban|jail|unjail)\s+(.+?)\s*$/i;
+const BOLO_TYPES = new Set(["kick", "ban"]);
 
 /** Resolve an in-game name to {id,name}. Tries the live player list, then a Roblox lookup. */
 async function resolveTarget(rawName, players) {
@@ -43,7 +45,9 @@ export async function autologCommandEntries(client, guildId, serverId, entries, 
 
   let created = 0;
   for (const e of entries) {
-    const cmd = String(e.Command || "").trim();
+    const rawCmd = String(e.Command || "").trim();
+    const bolo = /(^|\s)--bolo(\s|$)/i.test(rawCmd);
+    const cmd = rawCmd.replace(/\s--\w+\b/gi, "").trim(); // drop any --flags before parsing
     let type = null;
     let targetName = null;
     let reason = null;
@@ -82,6 +86,17 @@ export async function autologCommandEntries(client, guildId, serverId, entries, 
       c.case_number,
       serverId || null,
     ]);
+
+    if (bolo && BOLO_TYPES.has(type) && target.id)
+      await fileBanRequest({
+        guild: { id: guildId },
+        client,
+        robloxId: target.id,
+        robloxName: target.name,
+        reason: c.reason,
+        requestedBy: moderatorId,
+        sourceCase: c.case_number,
+      }).catch(() => {});
 
     const headshot = target.id ? await headshotUrl(target.id).catch(() => null) : null;
     const stats = await subjectStats(guildId, "roblox", target.id ?? targetName);

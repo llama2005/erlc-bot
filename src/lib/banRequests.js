@@ -1,10 +1,16 @@
+import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
 import { one, many, query } from "./pg.js";
+import { getGuildConfig } from "./guildConfig.js";
+import { resolveSendable } from "./modlog.js";
+import { headshotUrl } from "./roblox.js";
 
-export async function createBanRequest({ guildId, robloxId, robloxName, reason, requestedBy }) {
+const PENDING_COLOR = 0x3498db;
+
+export async function createBanRequest({ guildId, robloxId, robloxName, reason, requestedBy, sourceCase = null }) {
   return one(
-    `INSERT INTO ban_requests (guild_id, roblox_id, roblox_name, reason, requested_by, created_at)
-     VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
-    [guildId, String(robloxId), robloxName, reason || null, requestedBy, Date.now()],
+    `INSERT INTO ban_requests (guild_id, roblox_id, roblox_name, reason, requested_by, source_case, created_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+    [guildId, String(robloxId), robloxName, reason || null, requestedBy, sourceCase, Date.now()],
   );
 }
 
@@ -17,3 +23,42 @@ export const resolveBanRequest = async (id, status, resolvedBy) =>
   (await query("UPDATE ban_requests SET status=$1, resolved_by=$2 WHERE id=$3 AND status='pending'", [status, resolvedBy, id])).rowCount > 0;
 export const hasPendingRequest = async (guildId, robloxId) =>
   (await one("SELECT 1 FROM ban_requests WHERE guild_id=$1 AND roblox_id=$2 AND status='pending' LIMIT 1", [guildId, String(robloxId)])) != null;
+
+export function banRequestButtons(id, disabled = false) {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId(`banreq:approve:${id}`).setLabel("Approve").setStyle(ButtonStyle.Success).setDisabled(disabled),
+    new ButtonBuilder().setCustomId(`banreq:deny:${id}`).setLabel("Deny").setStyle(ButtonStyle.Danger).setDisabled(disabled),
+  );
+}
+
+export async function banRequestEmbed(req) {
+  return new EmbedBuilder()
+    .setColor(PENDING_COLOR)
+    .setTitle("Ban request — pending")
+    .setURL(`https://www.roblox.com/users/${req.roblox_id}/profile`)
+    .setThumbnail(await headshotUrl(req.roblox_id).catch(() => null))
+    .setDescription(`**[${req.roblox_name}](https://www.roblox.com/users/${req.roblox_id}/profile)**  \`${req.roblox_id}\``)
+    .addFields(
+      { name: "Reason", value: req.reason || "*no reason given*" },
+      { name: "Requested by", value: `<@${req.requested_by}>`, inline: true },
+      { name: "Request", value: `#${req.id}${req.source_case ? ` · from case #${req.source_case}` : ""}`, inline: true },
+    );
+}
+
+/**
+ * File a ban request end-to-end: dedupe → create row → post embed+buttons → remember the message.
+ * @returns {Promise<{ req: object } | { skipped: "pending" | "no-channel" }>}
+ */
+export async function fileBanRequest({ guild, client, robloxId, robloxName, reason, requestedBy, sourceCase = null, fallbackChannelId = null }) {
+  if (await hasPendingRequest(guild.id, robloxId)) return { skipped: "pending" };
+
+  const cfg = getGuildConfig(guild.id);
+  const destId = cfg.banreqChannel || cfg.modlogChannel || fallbackChannelId;
+  const { channel } = await resolveSendable(client ?? guild.client, destId, guild.id);
+  if (!channel) return { skipped: "no-channel" };
+
+  const req = await createBanRequest({ guildId: guild.id, robloxId, robloxName, reason, requestedBy, sourceCase });
+  const msg = await channel.send({ embeds: [await banRequestEmbed(req)], components: [banRequestButtons(req.id)] });
+  await attachMessage(req.id, msg.id, channel.id);
+  return { req };
+}
