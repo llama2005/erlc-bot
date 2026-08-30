@@ -55,7 +55,7 @@ export default {
       args: [
         { name: "role", type: "role", required: true, description: "The Discord role" },
         { name: "name", type: "string", required: true, description: "Label, e.g. 'Trial Mod'" },
-        { name: "nodes", type: "text", required: true, description: "Space/comma list, or 'all'. Nodes: " + ALL_NODES.join(", ") },
+        { name: "nodes", type: "text", required: true, description: "Space/comma-separated nodes, or 'all'. Run /permgroup list to see every node." },
       ],
       async execute(ctx) {
         const parsed = parseNodes(ctx.args.nodes);

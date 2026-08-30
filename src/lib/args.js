@@ -24,7 +24,7 @@ export function buildSlashOptions(args = []) {
     const opt = {
       type: SLASH_TYPE[a.type] ?? ApplicationCommandOptionType.String,
       name: a.name,
-      description: a.description || a.name,
+      description: (a.description || a.name).slice(0, 100),
       required: !!a.required,
     };
     if (a.autocomplete) opt.autocomplete = true;
