@@ -25,6 +25,7 @@ const COLUMNS = {
   staffAlertChannel: { col: "staff_alert_channel", def: () => null },
   loaChannel: { col: "loa_channel", def: () => null },
   appealChannel: { col: "appeal_channel", def: () => null },
+  shiftLogChannel: { col: "shift_log_channel", def: () => null },
   quotaChannel: { col: "quota_channel", def: () => null },
   statusChannel: { col: "status_channel", def: () => null },
   announceChannel: { col: "announce_channel", def: () => null },

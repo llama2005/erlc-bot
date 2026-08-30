@@ -1,6 +1,6 @@
 import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
 import { one, many, query } from "./pg.js";
-import { COLORS } from "./style.js";
+import { COLORS, EMOJI, statusField } from "./style.js";
 
 /** The Approve & unban / Deny review row for a ban appeal. */
 export function appealReviewButtons(id, done = false) {
@@ -23,19 +23,23 @@ export function appealEmbed(row, { priors = null, caseNumber = null } = {}) {
   const embed = new EmbedBuilder()
     .setColor(color)
     .setTitle(title)
-    .setDescription(
-      `From <@${row.user_id}>${row.roblox_name ? ` · Roblox **${row.roblox_name}** \`${row.roblox_id}\`` : " · *no Roblox account linked*"}`,
+    .setDescription(`Appeal from <@${row.user_id}>`)
+    .addFields(
+      {
+        name: "Roblox account",
+        value: row.roblox_name ? `${EMOJI.user} **${row.roblox_name}**\n${EMOJI.id} \`${row.roblox_id}\`` : "*not linked*",
+        inline: true,
+      },
+      { name: "Appeal", value: `${EMOJI.reason} ${(row.reason || "—").slice(0, 1000)}` },
     )
-    .addFields({ name: "Appeal", value: (row.reason || "—").slice(0, 1024) })
-    .setFooter({ text: `Appeal #${row.id}` });
+    .setFooter({ text: `Appeal: ${row.id}` });
 
   if (priors)
     embed.addFields({
       name: "Prior cases",
       value: priors.length ? priors.slice(0, 6).map((c) => `\`#${c.case_number}\` ${c.type} — ${c.reason || "—"}`).join("\n") : "none on record",
     });
-  if (row.reviewed_by && (approved || denied))
-    embed.addFields({ name: approved ? "Approved by" : "Denied by", value: `<@${row.reviewed_by}>`, inline: true });
+  embed.addFields(statusField(row.status, { byId: row.reviewed_by, at: row.reviewed_at }));
   if (caseNumber) embed.addFields({ name: "Case", value: `#${caseNumber}`, inline: true });
   return embed;
 }
@@ -55,4 +59,4 @@ export const listAppeals = (guildId, status = "pending") =>
 export const pendingAppealForUser = (guildId, userId) =>
   one("SELECT id FROM appeals WHERE guild_id=$1 AND user_id=$2 AND status='pending'", [guildId, userId]);
 export const resolveAppeal = async (id, status, reviewedBy) =>
-  (await query("UPDATE appeals SET status=$1, reviewed_by=$2 WHERE id=$3 AND status='pending'", [status, reviewedBy, id])).rowCount > 0;
+  (await query("UPDATE appeals SET status=$1, reviewed_by=$2, reviewed_at=$3 WHERE id=$4 AND status='pending'", [status, reviewedBy, Date.now(), id])).rowCount > 0;

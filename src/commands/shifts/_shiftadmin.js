@@ -30,6 +30,7 @@ import {
   deleteShift,
 } from "../../lib/shifts.js";
 import { getGuildConfig } from "../../lib/guildConfig.js";
+import { logShiftEvent } from "../../lib/shiftLog.js";
 
 const WEEK = 7 * 24 * 60 * 60 * 1000;
 const PER_PAGE = 6;
@@ -219,6 +220,8 @@ registerComponent("sa", async (interaction, parts) => {
     if (!ms) return interaction.reply({ content: err("Give a duration like `1h30m`."), flags: EPH });
     if (op === "set") await setShiftDuration(guild.id, shiftId, ms);
     else await bumpShiftDuration(guild.id, shiftId, op === "rem" ? -ms : ms);
+    const verb = op === "set" ? `set shift #${shiftId} to ${formatDuration(ms)} for` : `${op === "rem" ? "removed" : "added"} ${formatDuration(ms)} ${op === "rem" ? "from" : "to"} shift #${shiftId} of`;
+    await logShiftEvent(interaction.client, guild.id, { kind: "admin", userId: uid, adminId: interaction.user.id, action: verb, shift: { id: shiftId } });
     await interaction.deferUpdate();
     return interaction.editReply(await shiftPanel(guild, uid, shiftId));
   }
@@ -235,6 +238,13 @@ registerComponent("sa", async (interaction, parts) => {
     if (action === "picked") return interaction.editReply(await shiftPanel(guild, parts[1], interaction.values[0]));
     if (action === "typed") {
       await setShiftTypeById(guild.id, parts[2], interaction.values[0]);
+      await logShiftEvent(interaction.client, guild.id, {
+        kind: "admin",
+        userId: parts[1],
+        adminId: interaction.user.id,
+        action: `set shift #${parts[2]} type to **${interaction.values[0]}** for`,
+        shift: { id: parts[2] },
+      });
       return interaction.editReply(await shiftPanel(guild, parts[1], parts[2]));
     }
     return;
@@ -243,11 +253,19 @@ registerComponent("sa", async (interaction, parts) => {
   const uid = parts[1];
   switch (action) {
     case "in": {
-      if (await startShift(guild.id, uid, "default")) await toggleShiftRole(guild, uid, true);
+      const s = await startShift(guild.id, uid, "default");
+      if (s) {
+        await toggleShiftRole(guild, uid, true);
+        await logShiftEvent(interaction.client, guild.id, { kind: "in", userId: uid, type: "default", shift: s, adminId: interaction.user.id });
+      }
       return interaction.editReply(await mainPanel(guild, uid));
     }
     case "out": {
-      if (await endShift(guild.id, uid)) await toggleShiftRole(guild, uid, false);
+      const s = await endShift(guild.id, uid);
+      if (s) {
+        await toggleShiftRole(guild, uid, false);
+        await logShiftEvent(interaction.client, guild.id, { kind: "out", userId: uid, shift: s, adminId: interaction.user.id });
+      }
       return interaction.editReply(await mainPanel(guild, uid));
     }
     case "back":
@@ -268,6 +286,12 @@ registerComponent("sa", async (interaction, parts) => {
     }
     case "wipeok": {
       const n = await wipeShifts(guild.id, uid);
+      await logShiftEvent(interaction.client, guild.id, {
+        kind: "admin",
+        userId: uid,
+        adminId: interaction.user.id,
+        action: `wiped all ${n} shift record(s) of`,
+      });
       const p = await mainPanel(guild, uid);
       p.embeds[0].setFooter({ text: `Wiped ${n} shift record(s).` });
       return interaction.editReply(p);
@@ -279,6 +303,13 @@ registerComponent("sa", async (interaction, parts) => {
     }
     case "delok": {
       await deleteShift(guild.id, parts[2]);
+      await logShiftEvent(interaction.client, guild.id, {
+        kind: "admin",
+        userId: uid,
+        adminId: interaction.user.id,
+        action: `deleted shift #${parts[2]} of`,
+        shift: { id: parts[2] },
+      });
       return interaction.editReply(await modifySelect(guild, uid));
     }
     default:

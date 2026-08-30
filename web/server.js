@@ -258,7 +258,7 @@ app.get("/dashboard/:guildId", requireAuth, requireGuildAdmin, async (req, res) 
 const CHANNEL_FIELDS = [
   "modlogChannel", "commandLogChannel", "banreqChannel", "joinLogChannel", "killLogChannel",
   "ingameLogChannel", "modcallLogChannel", "sessionChannel", "staffAlertChannel", "loaChannel",
-  "appealChannel", "statusChannel", "announceChannel", "quotaChannel", "ticketCategory",
+  "appealChannel", "shiftLogChannel", "statusChannel", "announceChannel", "quotaChannel", "ticketCategory",
 ];
 const ROLE_FIELDS = ["erlcStaffRole", "erlcAdminRole", "shiftRole", "sessionPingRole", "ticketStaffRole"];
 
@@ -300,6 +300,7 @@ app.post("/dashboard/:guildId", requireAuth, requireGuildAdmin, async (req, res)
     staffAlertChannel: orNull(b.staffAlertChannel),
     loaChannel: orNull(b.loaChannel),
     appealChannel: orNull(b.appealChannel),
+    shiftLogChannel: orNull(b.shiftLogChannel),
     statusChannel: orNull(b.statusChannel),
     announceChannel: orNull(b.announceChannel),
     quotaChannel: orNull(b.quotaChannel),
@@ -431,7 +432,7 @@ app.post("/dashboard/:guildId/loa/:id/:decision", requireAuth, requireGuildAdmin
         components: [loaReviewButtons(fresh.id, true)],
       });
       const verb = dec === "approve" ? "approved" : dec === "deny" ? "denied" : "ended";
-      await d.dmUser(row.user_id, `Your LOA request (#${row.id}) in **${req.guild.name}** was **${verb}**.`);
+      await d.dmUser(row.user_id, `Your LOA request (#${row.id}) in **${req.guild.name}** was **${verb}** by ${req.user.username}.`);
     }
   }
   res.redirect(`/dashboard/${req.guild.id}/loa`);
@@ -486,7 +487,7 @@ app.post("/dashboard/:guildId/appeals/:id/:decision", requireAuth, requireGuildA
       embeds: [appealEmbed(fresh, { caseNumber: caseRow?.case_number })],
       components: [appealReviewButtons(a.id, true)],
     });
-    await d.dmUser(a.user_id, `Your ban appeal (#${a.id}) in **${req.guild.name}** was **${approve ? "approved" : "denied"}**.`);
+    await d.dmUser(a.user_id, `Your ban appeal (#${a.id}) in **${req.guild.name}** was **${approve ? "approved" : "denied"}** by ${req.user.username}.`);
   }
   res.redirect(`/dashboard/${req.guild.id}/appeals`);
 });

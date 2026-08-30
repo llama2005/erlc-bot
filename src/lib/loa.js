@@ -1,6 +1,6 @@
 import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, time } from "discord.js";
 import { one, many, query } from "./pg.js";
-import { COLORS } from "./style.js";
+import { COLORS, EMOJI, statusField } from "./style.js";
 import { formatDuration } from "./util.js";
 
 /** The Approve / Deny review row for an LOA request. */
@@ -24,6 +24,7 @@ export function loaEmbed(row) {
         ? ["LOA — ENDED", COLORS.neutral]
         : ["LOA — pending review", COLORS.warn];
 
+  const state = approved ? "approved" : denied ? "denied" : ended ? "ended" : "pending";
   const embed = new EmbedBuilder()
     .setColor(color)
     .setTitle(title)
@@ -32,12 +33,10 @@ export function loaEmbed(row) {
       { name: "From", value: time(Math.floor(row.starts_at / 1000), "D"), inline: true },
       { name: "Until", value: time(Math.floor(row.ends_at / 1000), "D"), inline: true },
       { name: "Length", value: formatDuration(row.ends_at - row.starts_at), inline: true },
-      { name: "Reason", value: row.reason || "*none given*" },
+      { name: "Reason", value: `${EMOJI.reason} ${row.reason || "*none given*"}` },
+      statusField(state, { byId: row.reviewed_by, at: row.reviewed_at }),
     )
-    .setFooter({ text: `LOA #${row.id}` });
-
-  if (row.reviewed_by && (approved || denied || ended))
-    embed.addFields({ name: approved ? "Approved by" : denied ? "Denied by" : "Ended by", value: `<@${row.reviewed_by}>` });
+    .setFooter({ text: `LOA: ${row.id}` });
   return embed;
 }
 
@@ -65,7 +64,14 @@ export const isOnLoa = async (guildId, userId) =>
   )) != null;
 
 export const setLoaStatus = async (id, status, reviewedBy) =>
-  (await query("UPDATE loa SET status=$1, reviewed_by=$2 WHERE id=$3 AND status IN ('pending','active')", [status, reviewedBy ?? null, id])).rowCount > 0;
+  (
+    await query("UPDATE loa SET status=$1, reviewed_by=$2, reviewed_at=$3 WHERE id=$4 AND status IN ('pending','active')", [
+      status,
+      reviewedBy ?? null,
+      Date.now(),
+      id,
+    ])
+  ).rowCount > 0;
 
 /** Auto-activate started LOAs and auto-end finished ones. Returns rows that changed. */
 export async function tickLoa() {

@@ -11,6 +11,12 @@ export const EMOJI = {
   clock: "🕓",
   hammer: "🔨",
   shield: "🛡️",
+  // Whisp-style field icons — single swap point if a custom emoji set is added later.
+  user: "👤",
+  id: "🆔",
+  folder: "📁",
+  reason: "📝",
+  pending: "⌛",
 };
 
 export const ok = (msg) => `${EMOJI.tick} ${msg}`;
@@ -21,7 +27,9 @@ export const COLORS = {
   success: 0x57f287,
   danger: 0xed4245,
   neutral: 0x2b2d31,
-  warn: 0xf1c40f,
+  // Whisp-style per-type hues: warn ≈ white, mute/timeout purple, kick orange, ban red,
+  // un-actions green, note grey.
+  warn: 0xe8e8e8,
   kick: 0xe67e22,
   ban: 0xe74c3c,
   unban: 0x2ecc71,
@@ -29,10 +37,12 @@ export const COLORS = {
   unjail: 0x2ecc71,
   note: 0x95a5a6,
   bolo: 0x3498db,
-  timeout: 0xf1c40f,
+  timeout: 0x9b59b6,
   unmute: 0x2ecc71,
   softban: 0xe74c3c,
   purge: 0x95a5a6,
+  clockIn: 0x009600,
+  clockOut: 0x95a5a6,
 };
 
 const TYPE = {
@@ -82,7 +92,7 @@ export function caseEmbed(o) {
     .setColor(o.voided ? COLORS.neutral : COLORS[o.type] ?? COLORS.primary)
     .setAuthor({ name: `Case #${o.caseNumber} · ${actionEmoji(o.type)} ${actionVerb(o.type)}${o.voided ? "  (voided)" : ""}` })
     .setDescription(url ? `### [${o.target.name}](${url})\n\`${o.target.id ?? "?"}\`` : `### ${o.target.name}\n\`${o.target.id ?? "?"}\``)
-    .addFields({ name: "Reason", value: (o.reason || "*No reason provided*").slice(0, 1024) })
+    .addFields({ name: "Reason", value: `${EMOJI.reason} ${(o.reason || "*No reason provided*").slice(0, 1000)}` })
     .setTimestamp(o.createdAt ?? Date.now());
 
   const meta = [{ name: "Moderator", value: `<@${o.moderator.id}>`, inline: true }, { name: "When", value: time(at, "R"), inline: true }];
@@ -93,6 +103,50 @@ export function caseEmbed(o) {
   if (o.target.headshot) embed.setThumbnail(o.target.headshot);
   if (o.moderator.iconURL) embed.setAuthor({ name: embed.data.author.name, iconURL: o.moderator.iconURL });
   if (o.extraFields?.length) embed.addFields(...o.extraFields);
-  embed.setFooter({ text: o.footer ? `⚠ ${o.footer}` : `${o.type} · logged permanently` });
+  embed.setFooter({ text: `Case: ${o.caseNumber}${o.footer ? ` · ⚠ ${o.footer}` : ""}` });
   return embed;
+}
+
+/** Discord account-creation epoch (ms) from a snowflake id. */
+export const snowflakeCreated = (id) => Number((BigInt(id) >> 22n) + 1420070400000n);
+
+/** Whisp-style "User" field for a Discord user. `user` = discord.js User or { id, tag }. */
+export function discordUserField(user, name = "User") {
+  const created = Math.floor(snowflakeCreated(user.id) / 1000);
+  return {
+    name,
+    value: [
+      `${EMOJI.user} <@${user.id}>`,
+      `${EMOJI.id} \`${user.id}\``,
+      `${EMOJI.clock} <t:${created}:d> (<t:${created}:R>)`,
+    ].join("\n"),
+  };
+}
+
+/** Whisp-style "User" field for a Roblox target. `t` = { name, id, displayName?, created? } (created = epoch ms). */
+export function robloxUserField(t, name = "User") {
+  const lines = [`${EMOJI.user} **${t.name}**${t.displayName && t.displayName !== t.name ? ` (${t.displayName})` : ""}`];
+  if (t.id) lines.push(`${EMOJI.id} \`${t.id}\``);
+  if (t.created) {
+    const c = Math.floor(Number(t.created) / 1000);
+    lines.push(`${EMOJI.clock} <t:${c}:d> (<t:${c}:R>)`);
+  }
+  return { name, value: lines.join("\n") };
+}
+
+/**
+ * Whisp-style "Status" field for anything resolvable (ban request / appeal / LOA).
+ * @param {"pending"|"approved"|"denied"|"ended"|"cancelled"} state
+ * @param {{ byId?: string, at?: number }} [meta] at = epoch ms
+ */
+export function statusField(state, { byId, at } = {}) {
+  const when = at ? ` · <t:${Math.floor(Number(at) / 1000)}:R>` : "";
+  const by = byId ? ` by <@${byId}>` : "";
+  const value =
+    state === "approved" ? `${EMOJI.tick} Approved${by}${when}`
+    : state === "denied" ? `${EMOJI.cross} Denied${by}${when}`
+    : state === "ended" ? `🔚 Ended${by}${when}`
+    : state === "cancelled" ? `🚫 Cancelled${by}${when}`
+    : `${EMOJI.pending} Awaiting review`;
+  return { name: "Status", value };
 }

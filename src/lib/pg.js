@@ -298,6 +298,10 @@ const MIGRATIONS = `
   ALTER TABLE ban_requests ADD COLUMN IF NOT EXISTS source_case INTEGER;
   ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS log_external_moderation BOOLEAN NOT NULL DEFAULT false;
   ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS hard_void BOOLEAN NOT NULL DEFAULT true;
+  ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS shift_log_channel TEXT;
+  ALTER TABLE ban_requests ADD COLUMN IF NOT EXISTS resolved_at BIGINT;
+  ALTER TABLE appeals ADD COLUMN IF NOT EXISTS reviewed_at BIGINT;
+  ALTER TABLE loa ADD COLUMN IF NOT EXISTS reviewed_at BIGINT;
 
   DROP TABLE IF EXISTS erlc_cursor;
   DROP TABLE IF EXISTS erlc_status;

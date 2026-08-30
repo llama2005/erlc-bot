@@ -24,7 +24,12 @@ registerComponent("appeal", async (interaction, [action, idStr]) => {
     return interaction.reply({ content: "You need ban permission to decide appeals.", flags: 1 << 6 });
 
   await interaction.deferUpdate();
-  await query("UPDATE appeals SET status=$1, reviewed_by=$2 WHERE id=$3", [action === "approve" ? "approved" : "denied", interaction.user.id, a.id]);
+  await query("UPDATE appeals SET status=$1, reviewed_by=$2, reviewed_at=$3 WHERE id=$4", [
+    action === "approve" ? "approved" : "denied",
+    interaction.user.id,
+    Date.now(),
+    a.id,
+  ]);
   const fresh = await getAppeal(a.id);
 
   let note = "";
@@ -70,7 +75,9 @@ registerComponent("appeal", async (interaction, [action, idStr]) => {
   const guild = interaction.client.guilds.cache.get(a.guild_id);
   await guild?.members
     .fetch(a.user_id)
-    .then((m) => m.send(`Your ban appeal in **${guild.name}** was **${action === "approve" ? "approved" : "denied"}**${note}.`))
+    .then((m) =>
+      m.send(`Your ban appeal in **${guild.name}** was **${action === "approve" ? "approved" : "denied"}** by ${interaction.user.username}${note}.`),
+    )
     .catch(() => {});
 });
 

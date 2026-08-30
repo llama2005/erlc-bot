@@ -38,7 +38,10 @@ async function act(ctx, { type, user, reason, durationMs = null, perform, dm = t
 
   if (dm)
     await user
-      .send(`You were **${actionVerb(type).toLowerCase()}** in **${ctx.guild.name}**${reason ? `: ${reason}` : "."}`)
+      .send(
+        `You have been **${actionVerb(type).toLowerCase()}** in **${ctx.guild.name}**${reason ? ` for: ${reason}` : ""}.` +
+          (durationMs ? ` Duration: ${formatDuration(durationMs)}.` : ""),
+      )
       .catch(() => {});
 
   let executed = true;

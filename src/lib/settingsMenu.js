@@ -29,6 +29,7 @@ const FIELDS = {
   sessionChannel: { kind: "channel", label: "Session channel", desc: "Where /session SSU/SSD announcements go" },
   staffAlertChannel: { kind: "channel", label: "Staff-alert channel", desc: "Off-duty staff command use is reported here" },
   loaChannel: { kind: "channel", label: "LOA channel", desc: "Leave-of-absence requests go here" },
+  shiftLogChannel: { kind: "channel", label: "Shift log", desc: "Clock-in/out and shift-admin actions are logged here" },
   appealChannel: { kind: "channel", label: "Appeal channel", desc: "Ban appeals go here for review" },
   statusChannel: { kind: "channel", label: "Status channel", desc: "ER:LC server up/down alerts" },
   ingameAutolog: { kind: "bool", label: "In-game auto-log", desc: "Turn :kick/:ban/:pm-warn run in-game into cases" },

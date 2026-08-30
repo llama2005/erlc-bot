@@ -39,6 +39,7 @@ export default {
         "`/config join-log` · `kill-log` · `ingame-log` · `modcall-log`",
       ),
       line(!!c.sessionChannel, "Session (SSU/SSD) channel", "`/config session-channel #channel`"),
+      line(!!c.shiftLogChannel, "Shift log channel", "`/config shift-log #channel` — clock-in/out + shift-admin actions"),
       line(
         !!(c.weeklyCaseQuota || c.weeklyShiftQuota) && !!c.quotaChannel,
         "Weekly staff quota report",

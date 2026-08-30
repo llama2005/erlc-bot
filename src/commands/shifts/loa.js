@@ -25,7 +25,9 @@ registerComponent("loa", async (interaction, [action, idStr]) => {
 
   const guild = interaction.client.guilds.cache.get(row.guild_id);
   const member = guild && (await guild.members.fetch(row.user_id).catch(() => null));
-  await member?.send(`Your LOA request (#${row.id}) in **${guild.name}** was **${action === "approve" ? "approved" : "denied"}**.`).catch(() => {});
+  await member
+    ?.send(`Your LOA request (#${row.id}) in **${guild.name}** was **${action === "approve" ? "approved" : "denied"}** by ${interaction.user.username}.`)
+    .catch(() => {});
 });
 
 export default {

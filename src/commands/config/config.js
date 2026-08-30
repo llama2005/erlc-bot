@@ -21,6 +21,7 @@ const SETTINGS = {
   "staff-alert": { field: "staffAlertChannel", kind: "channel", label: "Staff-alert channel" },
   "loa-channel": { field: "loaChannel", kind: "channel", label: "LOA channel" },
   "appeal-channel": { field: "appealChannel", kind: "channel", label: "Appeal channel" },
+  "shift-log": { field: "shiftLogChannel", kind: "channel", label: "Shift log channel" },
   "status-channel": { field: "statusChannel", kind: "channel", label: "Server status channel" },
   "announce-channel": { field: "announceChannel", kind: "channel", label: "Announcement channel" },
   "quota-channel": { field: "quotaChannel", kind: "channel", label: "Weekly quota report channel" },

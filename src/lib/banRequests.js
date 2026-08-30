@@ -3,6 +3,7 @@ import { one, many, query } from "./pg.js";
 import { getGuildConfig } from "./guildConfig.js";
 import { resolveSendable } from "./modlog.js";
 import { headshotUrl } from "./roblox.js";
+import { EMOJI, robloxUserField, statusField } from "./style.js";
 
 const PENDING_COLOR = 0x3498db;
 const APPROVED_COLOR = 0x2ecc71;
@@ -22,7 +23,7 @@ export const listPendingBanRequests = (guildId) =>
 export const attachMessage = (id, messageId, channelId) =>
   query("UPDATE ban_requests SET message_id=$1, channel_id=$2 WHERE id=$3", [messageId, channelId, id]);
 export const resolveBanRequest = async (id, status, resolvedBy) =>
-  (await query("UPDATE ban_requests SET status=$1, resolved_by=$2 WHERE id=$3 AND status='pending'", [status, resolvedBy, id])).rowCount > 0;
+  (await query("UPDATE ban_requests SET status=$1, resolved_by=$2, resolved_at=$3 WHERE id=$4 AND status='pending'", [status, resolvedBy, Date.now(), id])).rowCount > 0;
 export const hasPendingRequest = async (guildId, robloxId) =>
   (await one("SELECT 1 FROM ban_requests WHERE guild_id=$1 AND roblox_id=$2 AND status='pending' LIMIT 1", [guildId, String(robloxId)])) != null;
 
@@ -47,15 +48,14 @@ export async function banRequestEmbed(req, { caseNumber = null } = {}) {
     .setTitle(title)
     .setURL(`https://www.roblox.com/users/${req.roblox_id}/profile`)
     .setThumbnail(await headshotUrl(req.roblox_id).catch(() => null))
-    .setDescription(`**[${req.roblox_name}](https://www.roblox.com/users/${req.roblox_id}/profile)**  \`${req.roblox_id}\``)
     .addFields(
-      { name: "Reason", value: req.reason || "*no reason given*" },
+      robloxUserField({ name: req.roblox_name, id: req.roblox_id }),
+      { name: "Reason", value: `${EMOJI.reason} ${req.reason || "*no reason given*"}`.slice(0, 1024) },
       { name: "Requested by", value: `<@${req.requested_by}>`, inline: true },
-      { name: "Request", value: `#${req.id}${req.source_case ? ` · from case #${req.source_case}` : ""}`, inline: true },
+      statusField(req.status, { byId: req.resolved_by, at: req.resolved_at }),
     );
-  if (req.resolved_by && (approved || denied))
-    embed.addFields({ name: approved ? "Approved by" : "Denied by", value: `<@${req.resolved_by}>`, inline: true });
   if (caseNumber) embed.addFields({ name: "Case", value: `#${caseNumber}`, inline: true });
+  embed.setFooter({ text: `Request: ${req.id}${req.source_case ? ` · from case #${req.source_case}` : ""}` });
   return embed;
 }
 

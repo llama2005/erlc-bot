@@ -12,6 +12,7 @@ import {
   weeklyTrend,
 } from "../../lib/shifts.js";
 import { mainPanel } from "./_shiftadmin.js"; // also registers the `sa` component
+import { logShiftEvent } from "../../lib/shiftLog.js";
 
 const WEEK = 7 * 24 * 60 * 60 * 1000;
 
@@ -59,9 +60,17 @@ registerComponent("shift", async (interaction, [action, type]) => {
   const { guild, user } = interaction;
   await interaction.deferUpdate();
   if (action === "in") {
-    if (await startShift(guild.id, user.id, type || "default")) await toggleShiftRole(guild, user.id, true);
+    const s = await startShift(guild.id, user.id, type || "default");
+    if (s) {
+      await toggleShiftRole(guild, user.id, true);
+      await logShiftEvent(interaction.client, guild.id, { kind: "in", userId: user.id, type: type || "default", shift: s });
+    }
   } else if (action === "out") {
-    if (await endShift(guild.id, user.id)) await toggleShiftRole(guild, user.id, false);
+    const s = await endShift(guild.id, user.id);
+    if (s) {
+      await toggleShiftRole(guild, user.id, false);
+      await logShiftEvent(interaction.client, guild.id, { kind: "out", userId: user.id, shift: s });
+    }
   }
   await interaction.editReply(await panel(guild, user.id, user.username, type || "default"));
 });
@@ -95,6 +104,7 @@ export default {
         const s = await startShift(ctx.guild.id, ctx.author.id, type);
         if (!s) return ctx.reply({ content: err("You're already on duty."), ephemeral: true });
         await toggleShiftRole(ctx.guild, ctx.author.id, true);
+        await logShiftEvent(ctx.client, ctx.guild.id, { kind: "in", userId: ctx.author.id, type, shift: s });
         await ctx.reply(ok(`Clocked in${type !== "default" ? ` (\`${type}\`)` : ""}.`));
       },
     },
@@ -106,6 +116,7 @@ export default {
         const s = await endShift(ctx.guild.id, ctx.author.id);
         if (!s) return ctx.reply({ content: err("You're not on duty."), ephemeral: true });
         await toggleShiftRole(ctx.guild, ctx.author.id, false);
+        await logShiftEvent(ctx.client, ctx.guild.id, { kind: "out", userId: ctx.author.id, shift: s });
         await ctx.reply(ok(`Clocked out — this shift: \`${formatDuration(s.duration_ms)}\`.`));
       },
     },
