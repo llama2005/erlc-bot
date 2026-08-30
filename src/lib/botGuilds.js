@@ -43,6 +43,14 @@ export const listPurgeableGuilds = (cutoff) =>
 export async function purgeGuildData(guildId, { dropBotGuild = false } = {}) {
   return tx(async (c) => {
     let rows = 0;
+    // Tables keyed by erlc_servers.id rather than guild_id — clear before erlc_servers goes.
+    for (const t of ["erlc_log_cursor", "erlc_server_status"]) {
+      const r = await c.query(
+        `DELETE FROM ${t} WHERE server_id IN (SELECT id FROM erlc_servers WHERE guild_id=$1)`,
+        [guildId],
+      );
+      rows += r.rowCount ?? 0;
+    }
     for (const t of GUILD_SCOPED_TABLES) {
       const r = await c.query(`DELETE FROM ${t} WHERE guild_id=$1`, [guildId]);
       rows += r.rowCount ?? 0;

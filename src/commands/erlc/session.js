@@ -2,7 +2,7 @@ import { erlc, ErlcError } from "../../lib/erlc.js";
 import { resolveChannel } from "../../lib/modlog.js";
 import { ok } from "../../lib/style.js";
 import { getTemplate, renderPayload } from "../../lib/templates.js";
-import { erlcStaff, erlcKey } from "./_shared.js";
+import { erlcStaff, erlcKeyFor, SERVER_ARG } from "./_shared.js";
 
 const HINT = {
   startup: "Session starting — welcome! Read the rules and stay in character.",
@@ -12,7 +12,7 @@ const HINT = {
 async function announce(ctx, kind) {
   const cfg = ctx.config;
   const dest = (await resolveChannel(ctx.client, cfg.sessionChannel, ctx.guild.id)) ?? ctx.channel;
-  const key = erlcKey(ctx);
+  const key = await erlcKeyFor(ctx);
 
   // gather placeholder values
   let server = null;
@@ -63,7 +63,7 @@ export default {
       defer: true,
       ephemeral: true,
       aliases: ["ssu", "start"],
-      args: [{ name: "message", type: "text", required: false, description: "Custom announcement text" }],
+      args: [{ name: "message", type: "text", required: false, description: "Custom announcement text" }, SERVER_ARG],
       execute: (ctx) => announce(ctx, "startup"),
     },
     shutdown: {
@@ -71,7 +71,7 @@ export default {
       defer: true,
       ephemeral: true,
       aliases: ["ssd", "end"],
-      args: [{ name: "message", type: "text", required: false, description: "Custom announcement text" }],
+      args: [{ name: "message", type: "text", required: false, description: "Custom announcement text" }, SERVER_ARG],
       execute: (ctx) => announce(ctx, "shutdown"),
     },
   },

@@ -148,11 +148,29 @@ const SCHEMA = `
   );
   CREATE INDEX IF NOT EXISTS idx_banreq_guild ON ban_requests (guild_id, status);
 
-  CREATE TABLE IF NOT EXISTS erlc_cursor (
-    guild_id TEXT NOT NULL,
-    log_type TEXT NOT NULL,
-    last_ts  BIGINT NOT NULL DEFAULT 0,
-    PRIMARY KEY (guild_id, log_type)
+  CREATE TABLE IF NOT EXISTS erlc_servers (
+    id         BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    guild_id   TEXT NOT NULL,
+    label      TEXT NOT NULL,
+    api_key    TEXT NOT NULL,
+    is_default BOOLEAN NOT NULL DEFAULT false,
+    created_at BIGINT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_erlc_servers_guild ON erlc_servers (guild_id);
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_erlc_servers_default ON erlc_servers (guild_id) WHERE is_default;
+
+  CREATE TABLE IF NOT EXISTS erlc_log_cursor (
+    server_id BIGINT NOT NULL,
+    log_type  TEXT NOT NULL,
+    last_ts   BIGINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (server_id, log_type)
+  );
+
+  CREATE TABLE IF NOT EXISTS erlc_server_status (
+    server_id  BIGINT PRIMARY KEY,
+    online     BOOLEAN,
+    players    INTEGER,
+    checked_at BIGINT NOT NULL
   );
 
   CREATE TABLE IF NOT EXISTS perm_groups (
@@ -243,13 +261,6 @@ const SCHEMA = `
   );
   CREATE INDEX IF NOT EXISTS idx_tickets_guild ON tickets (guild_id, status);
 
-  CREATE TABLE IF NOT EXISTS erlc_status (
-    guild_id  TEXT PRIMARY KEY,
-    online    BOOLEAN,
-    players   INTEGER,
-    checked_at BIGINT NOT NULL
-  );
-
   CREATE TABLE IF NOT EXISTS message_templates (
     guild_id   TEXT NOT NULL,
     key        TEXT NOT NULL,
@@ -279,16 +290,29 @@ const MIGRATIONS = `
   ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS ingame_warn_trigger TEXT NOT NULL DEFAULT 'warn';
   ALTER TABLE mod_cases ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'discord';
   ALTER TABLE bot_guilds ADD COLUMN IF NOT EXISTS removed_at BIGINT;
+  ALTER TABLE mod_cases ADD COLUMN IF NOT EXISTS erlc_server_id BIGINT;
+  ALTER TABLE autohints ADD COLUMN IF NOT EXISTS server_id BIGINT;
+  ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS erlc_ban_all_servers BOOLEAN NOT NULL DEFAULT false;
+
+  DROP TABLE IF EXISTS erlc_cursor;
+  DROP TABLE IF EXISTS erlc_status;
+
+  INSERT INTO erlc_servers (guild_id, label, api_key, is_default, created_at)
+  SELECT guild_id, 'Main', erlc_key, true, (extract(epoch from now()) * 1000)::bigint
+  FROM guild_config
+  WHERE erlc_key IS NOT NULL AND erlc_key <> ''
+    AND NOT EXISTS (SELECT 1 FROM erlc_servers e WHERE e.guild_id = guild_config.guild_id);
 `;
 
 /**
- * Every table keyed by guild_id — used by the guild-removal purge job and `/data delete`.
- * `roblox_links` is deliberately excluded: verification is global, one link per user.
+ * Every guild-scoped table — used by the guild-removal purge job and `/data delete`.
+ * `roblox_links` is excluded (verification is global). `erlc_log_cursor` / `erlc_server_status`
+ * are keyed by server_id, not guild_id — purgeGuildData handles those separately.
  */
 export const GUILD_SCOPED_TABLES = [
   "guild_config", "guild_counters", "mod_cases", "mod_types", "shift_types", "shifts",
-  "ban_requests", "erlc_cursor", "perm_groups", "loa", "appeals", "autohints", "reminders",
-  "button_role_panels", "tickets", "erlc_status", "message_templates",
+  "ban_requests", "erlc_servers", "perm_groups", "loa", "appeals", "autohints", "reminders",
+  "button_role_panels", "tickets", "message_templates",
 ];
 
 export async function initSchema() {

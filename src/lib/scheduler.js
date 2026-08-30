@@ -1,8 +1,8 @@
 import { EmbedBuilder, time } from "discord.js";
-import { resolveErlcKey } from "../config.js";
 import { many, query } from "./pg.js";
 import { erlc } from "./erlc.js";
 import { getGuildConfig } from "./guildConfig.js";
+import { getServers } from "./erlcServers.js";
 import { listPurgeableGuilds, purgeGuildData } from "./botGuilds.js";
 import { resolveSendable } from "./modlog.js";
 import { tickLoa } from "./loa.js";
@@ -16,9 +16,6 @@ import { formatDuration, sleep } from "./util.js";
 const WEEK = 7 * 24 * 60 * 60 * 1000;
 let timer = null;
 
-async function keyFor(guildId) {
-  return resolveErlcKey(getGuildConfig(guildId));
-}
 
 async function runLoa(client) {
   const { activated, ended } = await tickLoa();
@@ -40,10 +37,14 @@ async function runLoa(client) {
 
 async function runAutohints(client) {
   for (const h of await dueAutohints()) {
-    const key = await keyFor(h.guild_id);
-    if (key) await erlc.command(key, `:h ${h.message}`).catch(() => {});
+    const servers = await getServers(h.guild_id);
+    // null server_id → every connected server; otherwise just the one it targets.
+    const targets = h.server_id ? servers.filter((s) => String(s.id) === String(h.server_id)) : servers;
+    for (const s of targets) {
+      await erlc.command(s.api_key, `:h ${h.message}`).catch(() => {});
+      await sleep(300);
+    }
     await bumpAutohint(h.id, h.interval_ms);
-    await sleep(300);
   }
 }
 

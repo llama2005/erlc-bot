@@ -1,4 +1,4 @@
-import { runAction, erlcStaff, ingameForType, PLAYER_ARG } from "./_shared.js";
+import { runAction, erlcStaff, ingameForType, PLAYER_ARG, SERVER_ARG } from "./_shared.js";
 import { listModTypes, getModType } from "../../lib/modTypes.js";
 import { err } from "../../lib/style.js";
 
@@ -15,6 +15,7 @@ export default {
     PLAYER_ARG,
     { name: "type", type: "string", required: true, description: "Moderation type", autocomplete: "modTypes" },
     { name: "reason", type: "text", required: false, description: "Reason" },
+    SERVER_ARG,
   ],
   async execute(ctx) {
     const type = ctx.args.type.toLowerCase();

@@ -1,4 +1,4 @@
-import { runAction, erlcStaff, PLAYER_ARG } from "./_shared.js";
+import { runAction, erlcStaff, PLAYER_ARG, SERVER_ARG } from "./_shared.js";
 
 export default {
   name: "warn",
@@ -8,6 +8,6 @@ export default {
   defer: true,
   permission: "mod.warn",
   ratelimit: { scope: "user", uses: 5, per: 15_000 },
-  args: [PLAYER_ARG, { name: "reason", type: "text", required: true, description: "Reason" }],
+  args: [PLAYER_ARG, { name: "reason", type: "text", required: true, description: "Reason" }, SERVER_ARG],
   execute: (ctx) => runAction(ctx, "warn", { reason: ctx.args.reason }),
 };

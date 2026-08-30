@@ -1,6 +1,6 @@
-import { resolveErlcKey } from "../../config.js";
 import { erlc, ErlcError } from "../../lib/erlc.js";
 import { resolvePlayer, pm, notifyText } from "../../lib/erlcModeration.js";
+import { resolveServer, getServers } from "../../lib/erlcServers.js";
 import { createCase, subjectStats } from "../../lib/cases.js";
 import { getModType } from "../../lib/modTypes.js";
 import { postToModlog } from "../../lib/modlog.js";
@@ -9,20 +9,18 @@ import { caseEmbed, err } from "../../lib/style.js";
 import { sleep } from "../../lib/util.js";
 
 export { erlcStaff, erlcAdmin, manageGuild } from "../../lib/checks.js";
+export { SERVER_ARG } from "../erlc/_shared.js";
 
-/** The guild's ER:LC key, or null. */
-export const erlcKeyOrNull = (ctx) => resolveErlcKey(ctx.config);
+/** The resolved ER:LC server (honours `ctx.args.server`), or null. */
+export const erlcServerOrNull = (ctx) => resolveServer(ctx.guild.id, ctx.args?.server).then((r) => r.server);
 
-/** The guild's ER:LC key, throwing a friendly error if unset (use for read/command endpoints). */
-export function keyFor(ctx) {
-  const key = erlcKeyOrNull(ctx);
-  if (!key) throw new ErlcError("ER:LC isn't connected for this server yet — an admin can add a Server-Key with `/config erlc-key` or on the dashboard.");
-  return key;
-}
+/** The resolved server's Server-Key, or null — for read paths where ER:LC is optional. */
+export const erlcKeyOrNull = async (ctx) => (await erlcServerOrNull(ctx))?.api_key ?? null;
 
 // requiresOnline: the in-game command only works if the player is in the server.
 const REQUIRES_ONLINE = new Set(["kick", "jail", "unjail"]);
 const SENDS_PM = new Set(["warn", "kick", "ban", "jail", "unjail"]);
+const PROPAGATES = new Set(["ban", "unban"]); // may run on every server when erlcBanAllServers is on
 
 export async function statSummary(guildId, robloxId) {
   const stats = await subjectStats(guildId, "roblox", robloxId);
@@ -41,14 +39,19 @@ export async function statSummary(guildId, robloxId) {
  * @param {{reason?: string, ingame?: (target) => string|null}} opts
  */
 export async function runAction(ctx, type, { reason, ingame } = {}) {
-  const key = erlcKeyOrNull(ctx);
+  const { server, matched } = await resolveServer(ctx.guild.id, ctx.args?.server);
+  const key = server?.api_key ?? null;
 
   if (ctx.config.reasonRequired && !reason)
     return ctx.reply({ content: err("This server requires a reason for moderation actions."), ephemeral: true });
 
   if (ingame && !key)
     return ctx.reply({
-      content: err("No ER:LC API key is set, so I can't run that in-game. An admin can set one with `/config erlc-key`. (`warn`, `note` and `bolo` work without a key.)"),
+      content: err(
+        matched
+          ? "ER:LC isn't connected for this server yet, so I can't run that in-game — an admin can add one with `/erlcserver add`. (`warn`, `note` and `bolo` work without it.)"
+          : `No ER:LC server called \`${ctx.args.server}\`. Use \`/erlcserver list\` to see them.`,
+      ),
       ephemeral: true,
     });
 
@@ -74,6 +77,7 @@ export async function runAction(ctx, type, { reason, ingame } = {}) {
     moderatorId: ctx.author.id,
     moderatorTag: modTag,
     executed: willExecute,
+    erlcServerId: server?.id ?? null,
   });
 
   let notified = null;
@@ -83,14 +87,22 @@ export async function runAction(ctx, type, { reason, ingame } = {}) {
   }
 
   let executed = true;
+  let propagated = 0;
   const cmd = ingame?.(target);
   if (cmd) {
-    try {
-      await erlc.command(key, cmd);
-    } catch (e) {
-      if (e instanceof ErlcError) executed = false;
-      else throw e;
+    // ban/unban optionally propagate to every connected server; everything else hits `server` only.
+    const targets =
+      PROPAGATES.has(type) && ctx.config.erlcBanAllServers ? await getServers(ctx.guild.id) : [server];
+    for (const s of targets.filter(Boolean)) {
+      try {
+        await erlc.command(s.api_key, cmd);
+        propagated++;
+        if (targets.length > 1) await sleep(5200);
+      } catch (e) {
+        if (!(e instanceof ErlcError)) throw e;
+      }
     }
+    executed = propagated > 0;
   }
 
   const headshot = await headshotUrl(target.id).catch(() => null);
@@ -99,6 +111,7 @@ export async function runAction(ctx, type, { reason, ingame } = {}) {
   if (!target.online) notes.push("player offline");
   if (notified === false) notes.push("in-game PM failed");
   if (cmd && !executed) notes.push("in-game command failed — case still logged");
+  if (cmd && propagated > 1) notes.push(`applied on ${propagated} servers`);
 
   const make = (footerNotes) =>
     caseEmbed({

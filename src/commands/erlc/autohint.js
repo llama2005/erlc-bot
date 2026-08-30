@@ -2,6 +2,8 @@ import { EmbedBuilder } from "discord.js";
 import { COLORS, ok, err } from "../../lib/style.js";
 import { parseDuration, formatDuration } from "../../lib/util.js";
 import { listAutohints, addAutohint, removeAutohint, toggleAutohint } from "../../lib/autohint.js";
+import { resolveServer } from "../../lib/erlcServers.js";
+import { SERVER_ARG } from "./_shared.js";
 
 export default {
   name: "autohint",
@@ -30,12 +32,21 @@ export default {
       args: [
         { name: "interval", type: "duration", required: true, description: "e.g. 15m, 1h" },
         { name: "message", type: "text", required: true, description: "Hint text" },
+        { ...SERVER_ARG, description: "Which ER:LC server (default: all of them)" },
       ],
       async execute(ctx) {
         const ms = ctx.args.interval;
         if (ms < 60_000) return ctx.reply({ content: err("Minimum interval is 1 minute."), ephemeral: true });
-        const row = await addAutohint(ctx.guild.id, ctx.args.message.slice(0, 250), ms);
-        await ctx.reply(ok(`Auto-hint #${row.id} added — every ${formatDuration(ms)}.`));
+        let serverId = null;
+        if (ctx.args.server) {
+          const { server, matched } = await resolveServer(ctx.guild.id, ctx.args.server);
+          if (!server)
+            return ctx.reply({ content: err(matched ? "ER:LC isn't connected here yet." : `No server called \`${ctx.args.server}\`.`), ephemeral: true });
+          serverId = server.id;
+        }
+        const row = await addAutohint(ctx.guild.id, ctx.args.message.slice(0, 250), ms, serverId);
+        const where = serverId ? ` on \`${(await resolveServer(ctx.guild.id, String(serverId))).server?.label}\`` : "";
+        await ctx.reply(ok(`Auto-hint #${row.id} added — every ${formatDuration(ms)}${where}.`));
       },
     },
     remove: {

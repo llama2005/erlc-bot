@@ -2,12 +2,13 @@ import { many, one, query } from "./pg.js";
 
 export const listAutohints = (guildId) => many("SELECT * FROM autohints WHERE guild_id=$1 ORDER BY id", [guildId]);
 
-export const addAutohint = (guildId, message, intervalMs) =>
-  one("INSERT INTO autohints (guild_id, message, interval_ms, next_at) VALUES ($1,$2,$3,$4) RETURNING *", [
+export const addAutohint = (guildId, message, intervalMs, serverId = null) =>
+  one("INSERT INTO autohints (guild_id, message, interval_ms, next_at, server_id) VALUES ($1,$2,$3,$4,$5) RETURNING *", [
     guildId,
     message,
     intervalMs,
     Date.now() + intervalMs,
+    serverId,
   ]);
 
 export const removeAutohint = async (guildId, id) =>

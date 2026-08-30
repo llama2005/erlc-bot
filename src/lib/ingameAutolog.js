@@ -1,6 +1,6 @@
-import { resolveErlcKey } from "../config.js";
-import { erlc, splitPlayer, ErlcError } from "./erlc.js";
+import { splitPlayer } from "./erlc.js";
 import { getGuildConfig } from "./guildConfig.js";
+import { query } from "./pg.js";
 import { getLinkByRoblox } from "./links.js";
 import { userByUsername } from "./roblox.js";
 import { createCase } from "./cases.js";
@@ -12,7 +12,7 @@ import { caseEmbed } from "./style.js";
 const ACTION_RE = /^:(kick|ban|unban|jail|unjail)\s+(.+?)\s*$/i;
 
 /** Resolve an in-game name to {id,name}. Tries the live player list, then a Roblox lookup. */
-async function resolveTarget(key, rawName, players) {
+async function resolveTarget(rawName, players) {
   const q = rawName.trim().toLowerCase();
   const hit = (players || []).map((p) => splitPlayer(p.Player)).find((p) => p.name.toLowerCase().startsWith(q) || p.name.toLowerCase().includes(q));
   if (hit?.id) return hit;
@@ -35,10 +35,9 @@ async function resolveModerator(entryPlayer) {
  * `:kick` / `:ban` / … and for `:pm <player> <trigger> <reason>` warns.
  * Returns the number of cases created.
  */
-export async function autologCommandEntries(client, guildId, entries, players) {
+export async function autologCommandEntries(client, guildId, serverId, entries, players) {
   const cfg = getGuildConfig(guildId);
   if (!cfg.ingameAutolog) return 0;
-  const key = resolveErlcKey(cfg);
   const trigger = (cfg.ingameWarnTrigger || "warn").toLowerCase();
   const pmWarnRe = new RegExp(`^:pm\\s+(\\S+)\\s+${trigger}\\b\\s*(.*)$`, "i");
 
@@ -63,7 +62,7 @@ export async function autologCommandEntries(client, guildId, entries, players) {
     }
     if (!type || !targetName) continue;
 
-    const target = await resolveTarget(key, targetName, players);
+    const target = await resolveTarget(targetName, players);
     const { moderatorId, moderatorTag } = await resolveModerator(e.Player);
 
     const c = await createCase({
@@ -77,10 +76,12 @@ export async function autologCommandEntries(client, guildId, entries, players) {
       moderatorTag,
       executed: true,
     });
-    // mark the source
-    await import("./pg.js").then(({ query }) =>
-      query("UPDATE mod_cases SET source='ingame' WHERE guild_id=$1 AND case_number=$2", [guildId, c.case_number]),
-    );
+    // mark the source + which ER:LC server it came from
+    await query("UPDATE mod_cases SET source='ingame', erlc_server_id=$3 WHERE guild_id=$1 AND case_number=$2", [
+      guildId,
+      c.case_number,
+      serverId || null,
+    ]);
 
     const headshot = target.id ? await headshotUrl(target.id).catch(() => null) : null;
     const stats = await subjectStats(guildId, "roblox", target.id ?? targetName);

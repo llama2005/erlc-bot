@@ -12,7 +12,6 @@ const COLUMNS = {
   commandLogChannel: { col: "command_log_channel", def: () => null },
   aiEnabled: { col: "ai_enabled", def: () => true },
   reasonRequired: { col: "reason_required", def: () => false },
-  erlcKey: { col: "erlc_key", def: () => null },
   erlcStaffRole: { col: "erlc_staff_role", def: () => null },
   erlcAdminRole: { col: "erlc_admin_role", def: () => null },
   shiftRole: { col: "shift_role", def: () => null },
@@ -35,6 +34,7 @@ const COLUMNS = {
   weeklyCaseQuota: { col: "weekly_case_quota", def: () => 0 },
   ingameAutolog: { col: "ingame_autolog", def: () => true },
   ingameWarnTrigger: { col: "ingame_warn_trigger", def: () => "warn" },
+  erlcBanAllServers: { col: "erlc_ban_all_servers", def: () => false },
 };
 
 function hydrate(row) {

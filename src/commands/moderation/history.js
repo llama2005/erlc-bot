@@ -14,7 +14,7 @@ export default {
   ratelimit: { scope: "user", uses: 10, per: 15_000 },
   args: [PLAYER_ARG],
   async execute(ctx) {
-    const target = await resolvePlayer(erlcKeyOrNull(ctx), ctx.args.player);
+    const target = await resolvePlayer(await erlcKeyOrNull(ctx), ctx.args.player);
     if (target?.unlinkedDiscordId)
       return ctx.reply({ content: err(`<@${target.unlinkedDiscordId}> hasn't linked a Roblox account (\`/verify\`).`), ephemeral: true });
     if (!target) return ctx.reply({ content: err(`No match for \`${ctx.args.player}\`.`), ephemeral: true });

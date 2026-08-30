@@ -4,7 +4,7 @@ import { resolvePlayer } from "../../lib/erlcModeration.js";
 import { headshotUrl } from "../../lib/roblox.js";
 import { createCase } from "../../lib/cases.js";
 import { getGuildConfig } from "../../lib/guildConfig.js";
-import { resolveErlcKey } from "../../config.js";
+import { defaultServer, getServers } from "../../lib/erlcServers.js";
 import { registerComponent } from "../../lib/components.js";
 import { sendModlog } from "../../lib/modlog.js";
 import {
@@ -20,9 +20,7 @@ import { PLAYER_ARG } from "./_shared.js";
 
 const PENDING_COLOR = 0x3498db;
 
-function keyForGuild(guildId) {
-  return resolveErlcKey(getGuildConfig(guildId));
-}
+const keyForGuild = (guildId) => defaultServer(guildId)?.api_key ?? null;
 
 const isApprover = (interaction) => hasPermissionInteraction(interaction, "mod.banreq.approve");
 
@@ -63,15 +61,20 @@ registerComponent("banreq", async (interaction, [action, idStr]) => {
 
   // approve → execute the ban + open a case
   await resolveBanRequest(id, "approved", interaction.user.id);
-  const key = keyForGuild(req.guild_id);
-  let executed = true;
-  try {
-    if (!key) throw new ErlcError("No ER:LC key configured.");
-    await erlc.command(key, `:ban ${req.roblox_name}`);
-  } catch (err) {
-    if (err instanceof ErlcError) executed = false;
-    else throw err;
+  const cfg = getGuildConfig(req.guild_id);
+  const all = await getServers(req.guild_id);
+  const targets = cfg.erlcBanAllServers ? all : [defaultServer(req.guild_id)].filter(Boolean);
+  let ran = 0;
+  for (const s of targets) {
+    try {
+      await erlc.command(s.api_key, `:ban ${req.roblox_name}`);
+      ran++;
+      if (targets.length > 1) await new Promise((r) => setTimeout(r, 5200));
+    } catch (err) {
+      if (!(err instanceof ErlcError)) throw err;
+    }
   }
+  const executed = ran > 0;
 
   const c = await createCase({
     guildId: req.guild_id,
@@ -83,6 +86,7 @@ registerComponent("banreq", async (interaction, [action, idStr]) => {
     moderatorId: req.requested_by,
     moderatorTag: "ban request",
     executed,
+    erlcServerId: defaultServer(req.guild_id)?.id ?? null,
   });
 
   base

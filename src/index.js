@@ -7,14 +7,17 @@ import { startErlcPoller } from "./lib/erlcPoller.js";
 import { startScheduler } from "./lib/scheduler.js";
 import { warmGuildConfigs, ensureGuildConfig, startConfigSync, pruneGuildConfigCache } from "./lib/guildConfig.js";
 import { startPermSync, prunePermCache } from "./lib/permissions.js";
+import { warmErlcServers, startErlcServerSync, pruneErlcServerCache } from "./lib/erlcServers.js";
 import { prunePlayerCache } from "./lib/autocomplete.js";
 import { syncBotGuild, removeBotGuild, syncAllBotGuilds } from "./lib/botGuilds.js";
 
 requireConfig("DISCORD_TOKEN", "ANTHROPIC_API_KEY", "DATABASE_URL");
 await initSchema();
 await warmGuildConfigs();
+await warmErlcServers();
 await startConfigSync().catch((e) => console.error("config sync setup failed:", e.message));
 await startPermSync().catch((e) => console.error("perm sync setup failed:", e.message));
+await startErlcServerSync().catch((e) => console.error("erlc server sync setup failed:", e.message));
 
 const client = new Client({
   intents: [
@@ -57,6 +60,7 @@ client.once(Events.ClientReady, async (c) => {
     pruneGuildConfigCache(active);
     prunePermCache(active);
     prunePlayerCache(active);
+    pruneErlcServerCache(active);
   };
   setInterval(sweepCaches, 30 * 60_000).unref?.();
 });
@@ -68,7 +72,7 @@ async function welcomeGuild(guild) {
     .setTitle(`Thanks for adding ${guild.client.user.username}!`)
     .setDescription(
       "ER:LC + Discord moderation, staff shifts, case logging, and more.\n\n" +
-        "**Get started:** run `/setup` to see what needs configuring, then `/config erlc-key` to connect your ER:LC private server.",
+        "**Get started:** run `/setup` to see what needs configuring, then `/erlcserver add` to connect your ER:LC private server.",
     );
   const links = [
     dash && `[Dashboard](${dash})`,
@@ -109,6 +113,7 @@ client.on(Events.GuildDelete, (guild) => {
   pruneGuildConfigCache(active);
   prunePermCache(active);
   prunePlayerCache(active);
+  pruneErlcServerCache(active);
 });
 
 client.on(Events.MessageCreate, (message) => {

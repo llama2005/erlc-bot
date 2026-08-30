@@ -1,5 +1,6 @@
 import { EmbedBuilder } from "discord.js";
 import { setGuildConfig } from "../../lib/guildConfig.js";
+import { listServers } from "../../lib/erlcServers.js";
 import { menuView } from "../../lib/settingsMenu.js";
 
 /** setting name -> { field, kind, label } */
@@ -22,7 +23,6 @@ const SETTINGS = {
   "announce-channel": { field: "announceChannel", kind: "channel", label: "Announcement channel" },
   "quota-channel": { field: "quotaChannel", kind: "channel", label: "Weekly quota report channel" },
   "ticket-category": { field: "ticketCategory", kind: "channel", label: "Ticket category" },
-  "erlc-key": { field: "erlcKey", kind: "secret", label: "ER:LC API key" },
   "erlc-role": { field: "erlcStaffRole", kind: "role", label: "ER:LC staff role" },
   "erlc-admin-role": { field: "erlcAdminRole", kind: "role", label: "ER:LC admin role" },
   "shift-role": { field: "shiftRole", kind: "role", label: "On-duty role" },
@@ -33,7 +33,7 @@ const SETTINGS = {
   "case-quota": { field: "weeklyCaseQuota", kind: "int", label: "Weekly case quota" },
   "shift-quota": { field: "weeklyShiftQuota", kind: "duration", label: "Weekly shift-time quota" },
 };
-export const CONFIG_SETTING_NAMES = ["view", ...Object.keys(SETTINGS), "disable", "enable"];
+export const CONFIG_SETTING_NAMES = ["view", ...Object.keys(SETTINGS), "erlc-key", "disable", "enable"];
 const NAMES = CONFIG_SETTING_NAMES;
 const CLEARWORDS = ["none", "off", "clear", "remove"];
 
@@ -74,7 +74,7 @@ export default {
         .addFields(
           { name: "Prefix", value: `\`${cfg.prefix}\``, inline: true },
           { name: "AI", value: cfg.aiEnabled ? "enabled" : "disabled", inline: true },
-          { name: "ER:LC key", value: cfg.erlcKey ? "set ✅" : "not set", inline: true },
+          { name: "ER:LC servers", value: `${listServers(ctx.guild.id).length}`, inline: true },
           { name: "Modlog", value: cfg.modlogChannel ? `<#${cfg.modlogChannel}>` : "none", inline: true },
           { name: "Command log", value: cfg.commandLogChannel ? `<#${cfg.commandLogChannel}>` : "none", inline: true },
           { name: "Ban requests", value: cfg.banreqChannel ? `<#${cfg.banreqChannel}>` : "none", inline: true },
@@ -86,6 +86,10 @@ export default {
         )
         .setFooter({ text: `${cfg.prefix}config <${NAMES.join(" | ")}>` });
       return ctx.reply({ embeds: [embed], ephemeral: true });
+    }
+
+    if (setting === "erlc-key") {
+      return reply("ER:LC servers are managed with `/erlcserver` now — connect one with `/erlcserver add <key>`, or use the dashboard.");
     }
 
     if (setting === "disable" || setting === "enable") {

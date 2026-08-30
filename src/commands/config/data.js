@@ -14,6 +14,7 @@ async function dumpGuild(guildId) {
   for (const t of GUILD_SCOPED_TABLES) {
     const rows = await many(`SELECT * FROM ${t} WHERE guild_id=$1`, [guildId]).catch(() => []);
     if (t === "guild_config") for (const r of rows) if (r.erlc_key) r.erlc_key = "[redacted]";
+    if (t === "erlc_servers") for (const r of rows) r.api_key = "[redacted]";
     if (rows.length) out[t] = rows;
   }
   return out;

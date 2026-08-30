@@ -3,9 +3,9 @@ import { erlc, ErlcError } from "../../lib/erlc.js";
 import { resolveSendable } from "../../lib/modlog.js";
 import { COLORS, ok } from "../../lib/style.js";
 import { getTemplate, renderPayload } from "../../lib/templates.js";
-import { erlcKeyOrNull } from "../moderation/_shared.js";
+import { erlcServerFor, SERVER_ARG } from "./_shared.js";
 
-const activeTimers = new Map(); // guildId -> timeout
+const activeTimers = new Map(); // `${guildId}:${serverId}` -> timeout
 
 export default {
   name: "priority",
@@ -18,10 +18,13 @@ export default {
   args: [
     { name: "minutes", type: "int", required: true, description: "How long the priority lasts" },
     { name: "reason", type: "text", required: false, description: "e.g. pursuit, scene, event" },
+    SERVER_ARG,
   ],
   async execute(ctx) {
     const mins = Math.min(60, Math.max(1, ctx.args.minutes));
-    const key = erlcKeyOrNull(ctx);
+    const server = await erlcServerFor(ctx).catch(() => null);
+    const key = server?.api_key ?? null;
+    const timerKey = `${ctx.guild.id}:${server?.id ?? 0}`;
     const reason = ctx.args.reason?.trim();
     const vars = { minutes: mins, reason: reason || "general priority", staff: `<@${ctx.author.id}>`, staffname: ctx.author.tag ?? ctx.author.username };
 
@@ -40,14 +43,14 @@ export default {
       } catch (e) {
         if (!(e instanceof ErlcError)) throw e;
       }
-      clearTimeout(activeTimers.get(ctx.guild.id));
+      clearTimeout(activeTimers.get(timerKey));
       activeTimers.set(
-        ctx.guild.id,
+        timerKey,
         setTimeout(async () => {
           erlc.command(key, ":h Priority has ended.").catch(() => {});
           const endTpl = await getTemplate(ctx.guild.id, "priority_end").catch(() => null);
           if (endTpl) target.send(renderPayload(endTpl, vars)).catch(() => {});
-          activeTimers.delete(ctx.guild.id);
+          activeTimers.delete(timerKey);
         }, mins * 60_000).unref?.() ?? undefined,
       );
     }

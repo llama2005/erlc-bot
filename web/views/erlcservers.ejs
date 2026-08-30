@@ -1,0 +1,70 @@
+<%- include("partials/head", { title: "ER:LC servers · " + guild.name }) %>
+
+<div class="page-head">
+  <div><h1>ER:LC servers</h1><div class="sub">Connect one or more ER:LC private servers. Commands default to the primary; a <code>server:</code> option picks another.</div></div>
+</div>
+
+<% if (saved === "1") { %><div class="flash">✓ Saved.</div><% } %>
+<% if (saved === "0") { %><div class="flash" style="background:var(--danger-soft);color:var(--danger)">Couldn't save — duplicate name or key.</div><% } %>
+<% if (saved === "badkey") { %><div class="flash" style="background:var(--danger-soft);color:var(--danger)">That Server-Key was rejected by the ER:LC API.</div><% } %>
+
+<div class="card">
+  <h2>Connected — <%= servers.length %></h2>
+  <% if (!servers.length) { %><p class="muted">None yet. Add one below.</p><% } else { %>
+  <table class="grid">
+    <thead><tr><th>Name</th><th>Key</th><th>Primary</th><th></th></tr></thead>
+    <tbody>
+      <% servers.forEach(function(s){ %>
+      <tr>
+        <td>
+          <form method="post" action="/dashboard/<%= guild.id %>/erlc" style="display:flex;gap:6px;align-items:center;margin:0">
+            <input type="hidden" name="_action" value="rename"><input type="hidden" name="id" value="<%= s.id %>">
+            <input type="text" name="name" value="<%= s.label %>" style="width:auto;margin:0">
+            <button class="btn subtle sm">Rename</button>
+          </form>
+        </td>
+        <td class="mono">…<%= String(s.api_key).slice(-4) %></td>
+        <td>
+          <% if (s.is_default) { %><span class="badge ok">primary</span><% } else { %>
+          <form method="post" action="/dashboard/<%= guild.id %>/erlc" style="margin:0">
+            <input type="hidden" name="_action" value="default"><input type="hidden" name="id" value="<%= s.id %>">
+            <button class="btn subtle sm">Make primary</button>
+          </form>
+          <% } %>
+        </td>
+        <td>
+          <form method="post" action="/dashboard/<%= guild.id %>/erlc" onsubmit="return confirm('Disconnect <%= s.label %>?')" style="margin:0">
+            <input type="hidden" name="_action" value="remove"><input type="hidden" name="id" value="<%= s.id %>">
+            <button class="btn danger sm">Remove</button>
+          </form>
+        </td>
+      </tr>
+      <% }) %>
+    </tbody>
+  </table>
+  <% } %>
+</div>
+
+<div class="card">
+  <h2>Add a server</h2>
+  <p class="card-desc">The Server-Key comes from your ER:LC private server settings → API. It's verified before it's saved.</p>
+  <form method="post" action="/dashboard/<%= guild.id %>/erlc">
+    <input type="hidden" name="_action" value="add">
+    <div class="field-grid">
+      <label>Name <input type="text" name="label" placeholder="Main"></label>
+      <label>Server-Key <input type="password" name="key" autocomplete="off" required></label>
+    </div>
+    <button class="btn">Connect</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Ban behaviour</h2>
+  <form method="post" action="/dashboard/<%= guild.id %>/erlc">
+    <input type="hidden" name="_action" value="banscope">
+    <label class="check"><input type="checkbox" name="erlcBanAllServers" <%= cfg.erlcBanAllServers ? "checked" : "" %>> When a ban / unban is issued, apply it on <strong>every</strong> connected server (not just the one targeted)</label>
+    <button class="btn">Save</button>
+  </form>
+</div>
+
+<%- include("partials/foot") %>

@@ -1,7 +1,8 @@
 import { EmbedBuilder, time } from "discord.js";
 import { erlcStaff } from "../../lib/checks.js";
-import { resolveErlcKey } from "../../config.js";
 import { erlc, splitPlayer } from "../../lib/erlc.js";
+import { resolveServer } from "../../lib/erlcServers.js";
+import { SERVER_ARG } from "../erlc/_shared.js";
 import { listActiveShifts } from "../../lib/shifts.js";
 
 export default {
@@ -13,6 +14,7 @@ export default {
   aliases: ["team"],
   permission: "erlc.read",
   ratelimit: { scope: "guild", uses: 4, per: 10_000 },
+  args: [SERVER_ARG],
   async execute(ctx) {
     const cfg = ctx.config;
 
@@ -33,7 +35,7 @@ export default {
         : "nobody",
     });
 
-    const key = resolveErlcKey(cfg);
+    const key = (await resolveServer(ctx.guild.id, ctx.args.server)).server?.api_key ?? null;
     if (key) {
       try {
         const players = await erlc.players(key);

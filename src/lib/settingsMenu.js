@@ -9,6 +9,7 @@ import {
   ChannelType,
 } from "discord.js";
 import { getGuildConfig, setGuildConfig } from "./guildConfig.js";
+import { listServers } from "./erlcServers.js";
 import { registerComponent } from "./components.js";
 
 // Editable settings surfaced in the interactive menu (prefix + erlc-key stay text-only).
@@ -54,10 +55,10 @@ function overviewEmbed(guild) {
   const embed = new EmbedBuilder()
     .setColor(0x2ecc71)
     .setTitle(`Settings · ${guild.name}`)
-    .setDescription("Pick a setting below to change it. `prefix` and `erlc-key` are set with `/config`.")
+    .setDescription("Pick a setting below to change it. `prefix` is set with `/config`; ER:LC servers with `/erlcserver`.")
     .addFields(
       { name: "Prefix", value: `\`${c.prefix}\``, inline: true },
-      { name: "ER:LC key", value: c.erlcKey ? "set ✅" : "—", inline: true },
+      { name: "ER:LC servers", value: `${listServers(guild.id).length}`, inline: true },
     );
   for (const [key, f] of Object.entries(FIELDS)) {
     if (f.kind === "modules") continue;

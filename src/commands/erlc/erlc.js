@@ -3,7 +3,7 @@ import { erlc, splitPlayer, ErlcError } from "../../lib/erlc.js";
 import { usersByIds, headshotUrl } from "../../lib/roblox.js";
 import { getLinkByRoblox } from "../../lib/links.js";
 import { getPublicIp } from "../../lib/publicIp.js";
-import { erlcKey, erlcStaff, manageGuild } from "./_shared.js";
+import { erlcServerFor, erlcStaff, manageGuild, SERVER_ARG } from "./_shared.js";
 
 const EMBED = 0x2b6cb0;
 
@@ -18,11 +18,8 @@ const PERM_FLAG = {
 const rankOf = (perm) => PERM_RANK[perm] ?? (perm && perm !== "Normal" ? 1 : 0);
 const permFlag = (perm) => PERM_FLAG[perm] ?? "•";
 
-function requireKey(ctx) {
-  const key = erlcKey(ctx);
-  if (!key) throw new ErlcError("ER:LC isn't connected for this server yet — an admin can add a Server-Key with `/config erlc-key` or on the dashboard.");
-  return key;
-}
+/** Resolve the target server's key (honours the `server:` arg), throwing a friendly error. */
+const requireKey = async (ctx) => (await erlcServerFor(ctx)).api_key;
 
 function playerLink({ name, id }) {
   return id ? `[${name}](https://www.roblox.com/users/${id}/profile)` : name;
@@ -40,8 +37,9 @@ export default {
       description: "Show ER:LC server status.",
       defer: true,
       ratelimit: { scope: "guild", uses: 4, per: 10_000 },
+      args: [SERVER_ARG],
       async execute(ctx) {
-        const key = requireKey(ctx);
+        const key = await requireKey(ctx);
         const [s, players, queue] = await Promise.all([
           erlc.server(key),
           erlc.players(key).catch(() => []),
@@ -72,8 +70,9 @@ export default {
       description: "List players currently in the server, grouped by team.",
       defer: true,
       ratelimit: { scope: "guild", uses: 4, per: 10_000 },
+      args: [SERVER_ARG],
       async execute(ctx) {
-        const list = await erlc.players(requireKey(ctx));
+        const list = await erlc.players(await requireKey(ctx));
         if (!Array.isArray(list) || !list.length) return ctx.reply("Nobody is in the server right now.");
 
         const byTeam = new Map();
@@ -103,9 +102,9 @@ export default {
       description: "Detailed info on a player currently in the server.",
       defer: true,
       ratelimit: { scope: "guild", uses: 4, per: 10_000 },
-      args: [{ name: "player", type: "string", required: true, description: "In-game name", autocomplete: "erlcPlayers" }],
+      args: [{ name: "player", type: "string", required: true, description: "In-game name", autocomplete: "erlcPlayers" }, SERVER_ARG],
       async execute(ctx) {
-        const key = requireKey(ctx);
+        const key = await requireKey(ctx);
         const [list, vehicles] = await Promise.all([erlc.players(key), erlc.vehicles(key).catch(() => [])]);
         const q = ctx.args.player.toLowerCase();
         const p = (Array.isArray(list) ? list : []).find((x) => splitPlayer(x.Player).name.toLowerCase().includes(q));
@@ -136,8 +135,9 @@ export default {
       description: "Show staff currently in the server.",
       defer: true,
       ratelimit: { scope: "guild", uses: 4, per: 10_000 },
+      args: [SERVER_ARG],
       async execute(ctx) {
-        const list = await erlc.players(requireKey(ctx));
+        const list = await erlc.players(await requireKey(ctx));
         const staff = (Array.isArray(list) ? list : []).filter((p) => p.Permission && p.Permission !== "Normal");
         if (!staff.length) return ctx.reply("No staff are in the server right now.");
         const lines = staff.map((p) => `• ${playerLink(splitPlayer(p.Player))} — ${p.Permission}`);
@@ -151,8 +151,9 @@ export default {
       description: "Show players waiting in the join queue.",
       defer: true,
       ratelimit: { scope: "guild", uses: 4, per: 10_000 },
+      args: [SERVER_ARG],
       async execute(ctx) {
-        const ids = await erlc.queue(requireKey(ctx));
+        const ids = await erlc.queue(await requireKey(ctx));
         if (!Array.isArray(ids) || !ids.length) return ctx.reply("The queue is empty.");
         const names = await usersByIds(ids);
         const lines = ids.map((id, i) => {
@@ -169,8 +170,9 @@ export default {
       description: "Recent joins and leaves.",
       defer: true,
       ratelimit: { scope: "guild", uses: 4, per: 10_000 },
+      args: [SERVER_ARG],
       async execute(ctx) {
-        const logs = await erlc.joinLogs(requireKey(ctx));
+        const logs = await erlc.joinLogs(await requireKey(ctx));
         if (!Array.isArray(logs) || !logs.length) return ctx.reply("No join logs.");
         const lines = logs
           .sort((a, b) => b.Timestamp - a.Timestamp)
@@ -184,8 +186,9 @@ export default {
       description: "Recent kill logs.",
       defer: true,
       ratelimit: { scope: "guild", uses: 4, per: 10_000 },
+      args: [SERVER_ARG],
       async execute(ctx) {
-        const logs = await erlc.killLogs(requireKey(ctx));
+        const logs = await erlc.killLogs(await requireKey(ctx));
         if (!Array.isArray(logs) || !logs.length) return ctx.reply("No kill logs.");
         const lines = logs
           .sort((a, b) => b.Timestamp - a.Timestamp)
@@ -199,8 +202,9 @@ export default {
       description: "Recent in-game commands run by staff.",
       defer: true,
       ratelimit: { scope: "guild", uses: 4, per: 10_000 },
+      args: [SERVER_ARG],
       async execute(ctx) {
-        const logs = await erlc.commandLogs(requireKey(ctx));
+        const logs = await erlc.commandLogs(await requireKey(ctx));
         if (!Array.isArray(logs) || !logs.length) return ctx.reply("No command logs.");
         const lines = logs
           .sort((a, b) => b.Timestamp - a.Timestamp)
@@ -214,8 +218,9 @@ export default {
       description: "Recent moderator calls.",
       defer: true,
       ratelimit: { scope: "guild", uses: 4, per: 10_000 },
+      args: [SERVER_ARG],
       async execute(ctx) {
-        const logs = await erlc.modCalls(requireKey(ctx));
+        const logs = await erlc.modCalls(await requireKey(ctx));
         if (!Array.isArray(logs) || !logs.length) return ctx.reply("No mod calls.");
         const lines = logs
           .sort((a, b) => b.Timestamp - a.Timestamp)
@@ -233,8 +238,9 @@ export default {
       description: "List players banned from the server.",
       defer: true,
       ratelimit: { scope: "guild", uses: 4, per: 10_000 },
+      args: [SERVER_ARG],
       async execute(ctx) {
-        const bans = await erlc.bans(requireKey(ctx));
+        const bans = await erlc.bans(await requireKey(ctx));
         const entries = Array.isArray(bans) ? [] : Object.entries(bans || {});
         if (!entries.length) return ctx.reply("No bans.");
         const lines = entries.slice(0, 40).map(([id, name]) => `• ${playerLink({ name, id })} (\`${id}\`)`);
@@ -251,8 +257,9 @@ export default {
       description: "List spawned vehicles.",
       defer: true,
       ratelimit: { scope: "guild", uses: 4, per: 10_000 },
+      args: [SERVER_ARG],
       async execute(ctx) {
-        const list = await erlc.vehicles(requireKey(ctx));
+        const list = await erlc.vehicles(await requireKey(ctx));
         if (!Array.isArray(list) || !list.length) return ctx.reply("No vehicles spawned.");
         const lines = list.slice(0, 40).map((v) => `• **${v.Name}** — ${v.Owner}${v.Texture ? ` _(${v.Texture})_` : ""}`);
         await ctx.reply({
@@ -268,10 +275,11 @@ export default {
       args: [
         { name: "player", type: "string", required: true, description: "In-game player name", autocomplete: "erlcPlayers" },
         { name: "message", type: "text", required: true, description: "Message to send" },
+        SERVER_ARG,
       ],
       ratelimit: { scope: "guild", uses: 1, per: 5000 },
       async execute(ctx) {
-        await erlc.command(requireKey(ctx), `:pm ${ctx.args.player} ${ctx.args.message}`);
+        await erlc.command(await requireKey(ctx), `:pm ${ctx.args.player} ${ctx.args.message}`);
         await ctx.reply(`Sent PM to **${ctx.args.player}**.`);
       },
     },
@@ -280,10 +288,10 @@ export default {
       description: "Broadcast a hint to everyone in-game (:hint).",
       permission: "erlc.message",
       defer: true,
-      args: [{ name: "message", type: "text", required: true, description: "Hint text" }],
+      args: [{ name: "message", type: "text", required: true, description: "Hint text" }, SERVER_ARG],
       ratelimit: { scope: "guild", uses: 1, per: 5000 },
       async execute(ctx) {
-        await erlc.command(requireKey(ctx), `:hint ${ctx.args.message}`);
+        await erlc.command(await requireKey(ctx), `:hint ${ctx.args.message}`);
         await ctx.reply("Hint sent.");
       },
     },
@@ -292,10 +300,10 @@ export default {
       description: "Broadcast a message to everyone in-game (:m).",
       permission: "erlc.message",
       defer: true,
-      args: [{ name: "message", type: "text", required: true, description: "Message text" }],
+      args: [{ name: "message", type: "text", required: true, description: "Message text" }, SERVER_ARG],
       ratelimit: { scope: "guild", uses: 1, per: 5000 },
       async execute(ctx) {
-        await erlc.command(requireKey(ctx), `:m ${ctx.args.message}`);
+        await erlc.command(await requireKey(ctx), `:m ${ctx.args.message}`);
         await ctx.reply("Message sent.");
       },
     },
@@ -321,12 +329,12 @@ export default {
       description: "Run a raw in-game command (Manage Server only).",
       defer: true,
       permission: "erlc.command",
-      args: [{ name: "command", type: "text", required: true, description: "e.g. :kill noah, :weather rain" }],
+      args: [{ name: "command", type: "text", required: true, description: "e.g. :kill noah, :weather rain" }, SERVER_ARG],
       ratelimit: { scope: "guild", uses: 1, per: 5000 },
       async execute(ctx) {
         let cmd = ctx.args.command.trim();
         if (!cmd.startsWith(":")) cmd = `:${cmd}`;
-        await erlc.command(requireKey(ctx), cmd);
+        await erlc.command(await requireKey(ctx), cmd);
         await ctx.reply(`Ran \`${cmd}\` in-game.`);
       },
     },

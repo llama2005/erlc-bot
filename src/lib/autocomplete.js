@@ -1,6 +1,5 @@
-import { resolveErlcKey } from "../config.js";
 import { erlc, splitPlayer } from "./erlc.js";
-import { getGuildConfig } from "./guildConfig.js";
+import { defaultServer } from "./erlcServers.js";
 import { listModTypes } from "./modTypes.js";
 
 // Short-lived cache so rapid keystrokes don't hammer the ER:LC API.
@@ -17,8 +16,8 @@ async function livePlayers(guildId) {
   const cached = playerCache.get(guildId);
   if (cached && Date.now() - cached.at < CACHE_TTL) return cached.players;
 
-  const cfg = getGuildConfig(guildId);
-  const key = resolveErlcKey(cfg);
+  // Autocomplete can't see a sibling `server:` value, so suggest from the primary server.
+  const key = defaultServer(guildId)?.api_key;
   if (!key) return [];
 
   let list = [];
@@ -76,6 +75,16 @@ export const autocompleteProviders = {
       .filter((n) => !q || n.includes(q))
       .slice(0, 25)
       .map((n) => ({ name: n === "*" ? "* (everything)" : n, value: n }));
+  },
+
+  /** Suggests this guild's connected ER:LC servers. */
+  async erlcServers(interaction, focused) {
+    const { getServers } = await import("./erlcServers.js");
+    const q = String(focused || "").toLowerCase();
+    return (await getServers(interaction.guildId))
+      .filter((s) => !q || s.label.toLowerCase().includes(q))
+      .slice(0, 25)
+      .map((s) => ({ name: `${s.label}${s.is_default ? " (primary)" : ""}`.slice(0, 100), value: s.label }));
   },
 
   /** Suggests this guild's shift types. */

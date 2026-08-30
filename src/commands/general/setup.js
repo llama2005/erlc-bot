@@ -1,7 +1,7 @@
 import { EmbedBuilder } from "discord.js";
 import { config } from "../../config.js";
+import { getServers } from "../../lib/erlcServers.js";
 import { COLORS } from "../../lib/style.js";
-import { formatDuration } from "../../lib/util.js";
 
 const line = (ok, label, fix) => `${ok ? "✅" : "⚠️"} **${label}** — ${ok ? "set" : fix}`;
 
@@ -16,9 +16,10 @@ export default {
   async execute(ctx) {
     const c = ctx.config;
     const dash = (config.links.dashboard || "").replace(/\/$/, "");
+    const serverCount = (await getServers(ctx.guild.id)).length;
 
     const essentials = [
-      line(!!c.erlcKey, "ER:LC Server-Key", "add one with `/config erlc-key` (or on the dashboard) to enable every ER:LC feature"),
+      line(serverCount > 0, "ER:LC server", "connect one with `/erlcserver add <key>` (or on the dashboard) to enable every ER:LC feature"),
       line(!!c.modlogChannel, "Moderation log channel", "`/config modlog #channel` — where cases are posted"),
       line(
         !!(c.erlcStaffRole || c.erlcAdminRole),

@@ -4,9 +4,19 @@ import express from "express";
 import cookieParser from "cookie-parser";
 import crypto from "node:crypto";
 
-import { config, requireConfig, resolveErlcKey } from "../src/config.js";
+import { config, requireConfig } from "../src/config.js";
 import { initSchema } from "../src/lib/pg.js";
 import { refreshGuildConfig, setGuildConfig, startConfigSync } from "../src/lib/guildConfig.js";
+import {
+  getServers,
+  defaultServer,
+  resolveServer,
+  addServer,
+  removeServer,
+  renameServer,
+  setDefaultServer,
+  startErlcServerSync,
+} from "../src/lib/erlcServers.js";
 import { getBotGuild, listBotGuilds } from "../src/lib/botGuilds.js";
 import {
   getRecentCases,
@@ -35,6 +45,7 @@ import { setSession, clearSession, readSession, requireAuth } from "./auth.js";
 requireConfig("DATABASE_URL", "DISCORD_TOKEN", "DISCORD_CLIENT_ID", "DISCORD_CLIENT_SECRET", "SESSION_SECRET");
 await initSchema();
 await startConfigSync().catch((e) => console.error("config sync setup failed:", e.message));
+await startErlcServerSync().catch((e) => console.error("erlc server sync setup failed:", e.message));
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -176,7 +187,7 @@ app.get("/dashboard/:guildId/overview", requireAuth, requireGuildAdmin, async (r
     getRecentCases(req.guild.id, 8),
     leaderboard(req.guild.id, since),
     (async () => {
-      const key = resolveErlcKey(cfg);
+      const key = defaultServer(req.guild.id)?.api_key || (await getServers(req.guild.id))[0]?.api_key;
       if (!key || !cfg.statusChannel) return null;
       if (!erlcAllowed(req.guild.id)) return null;
       return erlc.server(key).catch(() => "offline");
@@ -276,9 +287,6 @@ app.post("/dashboard/:guildId", requireAuth, requireGuildAdmin, async (req, res)
     weeklyShiftQuota: Math.max(0, parseInt(b.weeklyShiftQuotaMin, 10) || 0) * 60000,
     disabledModules: [].concat(b.disabledModules || []).filter(Boolean),
   };
-  // only overwrite the ER:LC key when a new one is actually submitted
-  if (b.erlcKey && b.erlcKey.trim() && b.erlcKey !== "********") patch.erlcKey = b.erlcKey.trim();
-  if (b.clearErlcKey === "on") patch.erlcKey = null;
 
   await setGuildConfig(req.guild.id, patch);
   res.redirect(`/dashboard/${req.guild.id}?saved=1`);
@@ -393,14 +401,18 @@ app.post("/dashboard/:guildId/appeals/:id/:decision", requireAuth, requireGuildA
     const approve = req.params.decision === "approve";
     await resolveAppeal(a.id, approve ? "approved" : "denied", req.user.id);
     if (approve) {
-      const key = resolveErlcKey(req.cfg);
+      const servers = await getServers(req.guild.id);
+      const primary = defaultServer(req.guild.id) || servers[0];
+      const targets = req.cfg.erlcBanAllServers ? servers : [primary].filter(Boolean);
       let executed = false;
-      if (key && a.roblox_name && erlcAllowed(req.guild.id)) {
-        try {
-          await erlc.command(key, `:unban ${a.roblox_name}`);
-          executed = true;
-        } catch {
-          /* ignore */
+      if (a.roblox_name && erlcAllowed(req.guild.id)) {
+        for (const s of targets) {
+          try {
+            await erlc.command(s.api_key, `:unban ${a.roblox_name}`);
+            executed = true;
+          } catch {
+            /* ignore */
+          }
         }
       }
       if (a.roblox_id)
@@ -411,6 +423,7 @@ app.post("/dashboard/:guildId/appeals/:id/:decision", requireAuth, requireGuildA
           subjectName: a.roblox_name || a.roblox_id,
           type: "unban",
           reason: `Appeal #${a.id} approved`,
+          erlcServerId: primary?.id ?? null,
           moderatorId: req.user.id,
           moderatorTag: `${req.user.username} (web)`,
           executed,
@@ -509,6 +522,43 @@ app.post("/dashboard/:guildId/send", requireAuth, requireGuildAdmin, async (req,
   res.redirect(`/dashboard/${req.guild.id}/templates?sent=${r.ok ? "1" : "0"}`);
 });
 
+// ---- ER:LC servers ----
+app.get("/dashboard/:guildId/erlc", requireAuth, requireGuildAdmin, async (req, res) => {
+  const servers = await getServers(req.guild.id);
+  await g(req, res, "erlcservers", { tab: "erlc", servers, saved: req.query.saved });
+});
+
+app.post("/dashboard/:guildId/erlc", requireAuth, requireGuildAdmin, async (req, res) => {
+  const b = req.body;
+  const back = (q = "") => res.redirect(`/dashboard/${req.guild.id}/erlc${q}`);
+  try {
+    if (b._action === "add") {
+      const key = (b.key || "").trim();
+      const existing = await getServers(req.guild.id);
+      if (!key || existing.some((s) => s.api_key === key)) return back("?saved=0");
+      try {
+        await erlc.server(key);
+      } catch {
+        return back("?saved=badkey");
+      }
+      const label = (b.label || (existing.length === 0 ? "Main" : `Server ${existing.length + 1}`)).slice(0, 40);
+      if (existing.some((s) => s.label.toLowerCase() === label.toLowerCase())) return back("?saved=0");
+      await addServer(req.guild.id, label, key);
+    } else if (b._action === "remove") {
+      await removeServer(req.guild.id, Number(b.id));
+    } else if (b._action === "rename" && b.name) {
+      await renameServer(req.guild.id, Number(b.id), b.name.slice(0, 40));
+    } else if (b._action === "default") {
+      await setDefaultServer(req.guild.id, Number(b.id));
+    } else if (b._action === "banscope") {
+      await setGuildConfig(req.guild.id, { erlcBanAllServers: b.erlcBanAllServers === "on" });
+    }
+  } catch (e) {
+    console.error("erlc servers POST:", e.message);
+  }
+  back("?saved=1");
+});
+
 // ---- permissions ----
 app.get("/dashboard/:guildId/permissions", requireAuth, requireGuildAdmin, async (req, res) => {
   const [groups, roles] = await Promise.all([getPermGroups(req.guild.id), d.getGuildRoles(req.guild.id).catch(() => [])]);
@@ -544,15 +594,21 @@ app.post("/dashboard/:guildId/banreqs/:id/:decision", requireAuth, requireGuildA
   if (request && String(request.guild_id) === req.guild.id && request.status === "pending") {
     if (req.params.decision === "approve") {
       await resolveBanRequest(id, "approved", req.user.id);
-      const key = resolveErlcKey(req.cfg);
-      let executed = true;
-      try {
-        if (!key || !erlcAllowed(req.guild.id)) throw new ErlcError("no key");
-        await erlc.command(key, `:ban ${request.roblox_name}`);
-      } catch (e) {
-        if (e instanceof ErlcError) executed = false;
-        else throw e;
+      const servers = await getServers(req.guild.id);
+      const primary = defaultServer(req.guild.id) || servers[0];
+      const targets = req.cfg.erlcBanAllServers ? servers : [primary].filter(Boolean);
+      let ran = 0;
+      if (erlcAllowed(req.guild.id)) {
+        for (const s of targets) {
+          try {
+            await erlc.command(s.api_key, `:ban ${request.roblox_name}`);
+            ran++;
+          } catch (e) {
+            if (!(e instanceof ErlcError)) throw e;
+          }
+        }
       }
+      const executed = ran > 0;
       await createCase({
         guildId: req.guild.id,
         platform: "roblox",
@@ -560,6 +616,7 @@ app.post("/dashboard/:guildId/banreqs/:id/:decision", requireAuth, requireGuildA
         subjectName: request.roblox_name,
         type: "ban",
         reason: request.reason,
+        erlcServerId: primary?.id ?? null,
         moderatorId: request.requested_by,
         moderatorTag: "ban request (web)",
         executed,

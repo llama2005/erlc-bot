@@ -9,7 +9,7 @@ import { getSubjectCases } from "../../lib/cases.js";
 import { createCase } from "../../lib/cases.js";
 import { erlc, ErlcError } from "../../lib/erlc.js";
 import { getGuildConfig } from "../../lib/guildConfig.js";
-import { resolveErlcKey } from "../../config.js";
+import { defaultServer, getServers } from "../../lib/erlcServers.js";
 import { COLORS, ok, err } from "../../lib/style.js";
 
 function buttons(id, done = false) {
@@ -37,9 +37,20 @@ registerComponent("appeal", async (interaction, [action, idStr]) => {
 
   let note = "";
   if (action === "approve" && a.roblox_name) {
-    const key = resolveErlcKey(getGuildConfig(a.guild_id));
+    const cfg = getGuildConfig(a.guild_id);
+    const primary = defaultServer(a.guild_id);
+    const targets = cfg.erlcBanAllServers ? await getServers(a.guild_id) : [primary].filter(Boolean);
+    let ran = 0;
     try {
-      if (key) await erlc.command(key, `:unban ${a.roblox_name}`);
+      for (const s of targets) {
+        try {
+          await erlc.command(s.api_key, `:unban ${a.roblox_name}`);
+          ran++;
+          if (targets.length > 1) await new Promise((r) => setTimeout(r, 5200));
+        } catch (e) {
+          if (!(e instanceof ErlcError)) throw e;
+        }
+      }
       const c = await createCase({
         guildId: a.guild_id,
         platform: "roblox",
@@ -49,10 +60,11 @@ registerComponent("appeal", async (interaction, [action, idStr]) => {
         reason: `Appeal #${a.id} approved`,
         moderatorId: interaction.user.id,
         moderatorTag: "appeal",
-        executed: !!key,
+        executed: ran > 0,
+        erlcServerId: primary?.id ?? null,
       });
       base.addFields({ name: "Case", value: `#${c.case_number}`, inline: true });
-      note = key ? "" : " (no ER:LC key — logged only)";
+      note = ran > 0 ? "" : " (ER:LC not connected — logged only)";
     } catch (e) {
       if (!(e instanceof ErlcError)) throw e;
       note = " (in-game :unban failed)";

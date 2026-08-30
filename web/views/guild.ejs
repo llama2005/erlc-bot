@@ -73,10 +73,8 @@ function roleSelect(name, selected) {
   </section>
 
   <section class="card">
-    <h2>ER:LC API key</h2>
-    <p class="muted">Server-Key from the ER:LC private server settings. Leave blank to keep the current one.</p>
-    <label>New key <input type="password" name="erlcKey" placeholder="<%= cfg.erlcKey ? '•••••••• (set)' : 'not set' %>" autocomplete="off"></label>
-    <% if (cfg.erlcKey) { %><label class="check"><input type="checkbox" name="clearErlcKey"> Remove the current key</label><% } %>
+    <h2>ER:LC servers</h2>
+    <p class="muted">Connect one or more ER:LC private servers — <a href="/dashboard/<%= guild.id %>/erlc">manage them here</a>.</p>
   </section>
 
   <section class="card">
