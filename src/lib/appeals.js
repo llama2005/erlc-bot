@@ -1,4 +1,44 @@
+import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
 import { one, many, query } from "./pg.js";
+import { COLORS } from "./style.js";
+
+/** The Approve & unban / Deny review row for a ban appeal. */
+export function appealReviewButtons(id, done = false) {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId(`appeal:approve:${id}`).setLabel("Approve & unban").setStyle(ButtonStyle.Success).setDisabled(done),
+    new ButtonBuilder().setCustomId(`appeal:deny:${id}`).setLabel("Deny").setStyle(ButtonStyle.Danger).setDisabled(done),
+  );
+}
+
+/** Canonical ban-appeal embed rebuilt from a DB row — reflects `status` + `reviewed_by`. */
+export function appealEmbed(row, { priors = null, caseNumber = null } = {}) {
+  const approved = row.status === "approved";
+  const denied = row.status === "denied";
+  const [title, color] = approved
+    ? ["Ban appeal — APPROVED", COLORS.success]
+    : denied
+      ? ["Ban appeal — DENIED", COLORS.danger]
+      : ["Ban appeal — pending", COLORS.primary];
+
+  const embed = new EmbedBuilder()
+    .setColor(color)
+    .setTitle(title)
+    .setDescription(
+      `From <@${row.user_id}>${row.roblox_name ? ` · Roblox **${row.roblox_name}** \`${row.roblox_id}\`` : " · *no Roblox account linked*"}`,
+    )
+    .addFields({ name: "Appeal", value: (row.reason || "—").slice(0, 1024) })
+    .setFooter({ text: `Appeal #${row.id}` });
+
+  if (priors)
+    embed.addFields({
+      name: "Prior cases",
+      value: priors.length ? priors.slice(0, 6).map((c) => `\`#${c.case_number}\` ${c.type} — ${c.reason || "—"}`).join("\n") : "none on record",
+    });
+  if (row.reviewed_by && (approved || denied))
+    embed.addFields({ name: approved ? "Approved by" : "Denied by", value: `<@${row.reviewed_by}>`, inline: true });
+  if (caseNumber) embed.addFields({ name: "Case", value: `#${caseNumber}`, inline: true });
+  return embed;
+}
 
 export const createAppeal = ({ guildId, userId, robloxId, robloxName, reason }) =>
   one(

@@ -5,6 +5,8 @@ import { resolveSendable } from "./modlog.js";
 import { headshotUrl } from "./roblox.js";
 
 const PENDING_COLOR = 0x3498db;
+const APPROVED_COLOR = 0x2ecc71;
+const DENIED_COLOR = 0xe74c3c;
 
 export async function createBanRequest({ guildId, robloxId, robloxName, reason, requestedBy, sourceCase = null }) {
   return one(
@@ -31,10 +33,18 @@ export function banRequestButtons(id, disabled = false) {
   );
 }
 
-export async function banRequestEmbed(req) {
-  return new EmbedBuilder()
-    .setColor(PENDING_COLOR)
-    .setTitle("Ban request — pending")
+export async function banRequestEmbed(req, { caseNumber = null } = {}) {
+  const approved = req.status === "approved";
+  const denied = req.status === "denied";
+  const [title, color] = approved
+    ? ["Ban request — APPROVED", APPROVED_COLOR]
+    : denied
+      ? ["Ban request — DENIED", DENIED_COLOR]
+      : ["Ban request — pending", PENDING_COLOR];
+
+  const embed = new EmbedBuilder()
+    .setColor(color)
+    .setTitle(title)
     .setURL(`https://www.roblox.com/users/${req.roblox_id}/profile`)
     .setThumbnail(await headshotUrl(req.roblox_id).catch(() => null))
     .setDescription(`**[${req.roblox_name}](https://www.roblox.com/users/${req.roblox_id}/profile)**  \`${req.roblox_id}\``)
@@ -43,6 +53,10 @@ export async function banRequestEmbed(req) {
       { name: "Requested by", value: `<@${req.requested_by}>`, inline: true },
       { name: "Request", value: `#${req.id}${req.source_case ? ` · from case #${req.source_case}` : ""}`, inline: true },
     );
+  if (req.resolved_by && (approved || denied))
+    embed.addFields({ name: approved ? "Approved by" : "Denied by", value: `<@${req.resolved_by}>`, inline: true });
+  if (caseNumber) embed.addFields({ name: "Case", value: `#${caseNumber}`, inline: true });
+  return embed;
 }
 
 /**

@@ -1,4 +1,45 @@
+import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, time } from "discord.js";
 import { one, many, query } from "./pg.js";
+import { COLORS } from "./style.js";
+import { formatDuration } from "./util.js";
+
+/** The Approve / Deny review row for an LOA request. */
+export function loaReviewButtons(id, done = false) {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId(`loa:approve:${id}`).setLabel("Approve").setStyle(ButtonStyle.Success).setDisabled(done),
+    new ButtonBuilder().setCustomId(`loa:deny:${id}`).setLabel("Deny").setStyle(ButtonStyle.Danger).setDisabled(done),
+  );
+}
+
+/** Canonical LOA embed rebuilt from a DB row — reflects `status` + `reviewed_by`. */
+export function loaEmbed(row) {
+  const approved = row.status === "active" || (row.status === "pending" && row.reviewed_by);
+  const denied = row.status === "denied";
+  const ended = row.status === "ended";
+  const [title, color] = approved
+    ? ["LOA — APPROVED", COLORS.success]
+    : denied
+      ? ["LOA — DENIED", COLORS.danger]
+      : ended
+        ? ["LOA — ENDED", COLORS.neutral]
+        : ["LOA — pending review", COLORS.warn];
+
+  const embed = new EmbedBuilder()
+    .setColor(color)
+    .setTitle(title)
+    .setDescription(`<@${row.user_id}> requested leave.`)
+    .addFields(
+      { name: "From", value: time(Math.floor(row.starts_at / 1000), "D"), inline: true },
+      { name: "Until", value: time(Math.floor(row.ends_at / 1000), "D"), inline: true },
+      { name: "Length", value: formatDuration(row.ends_at - row.starts_at), inline: true },
+      { name: "Reason", value: row.reason || "*none given*" },
+    )
+    .setFooter({ text: `LOA #${row.id}` });
+
+  if (row.reviewed_by && (approved || denied || ended))
+    embed.addFields({ name: approved ? "Approved by" : denied ? "Denied by" : "Ended by", value: `<@${row.reviewed_by}>` });
+  return embed;
+}
 
 export const createLoa = ({ guildId, userId, reason, startsAt, endsAt }) =>
   one(

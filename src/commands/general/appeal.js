@@ -1,4 +1,3 @@
-import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
 import { one, query } from "../../lib/pg.js";
 import { registerComponent } from "../../lib/components.js";
 import { resolveSendable } from "../../lib/modlog.js";
@@ -11,17 +10,13 @@ import { logCase, renderCaseEmbed } from "../../lib/caseLog.js";
 import { erlc, ErlcError } from "../../lib/erlc.js";
 import { getGuildConfig } from "../../lib/guildConfig.js";
 import { defaultServer, getServers } from "../../lib/erlcServers.js";
-import { COLORS, ok, err } from "../../lib/style.js";
+import { getAppeal, appealEmbed, appealReviewButtons } from "../../lib/appeals.js";
+import { ok, err } from "../../lib/style.js";
 
-function buttons(id, done = false) {
-  return new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId(`appeal:approve:${id}`).setLabel("Approve & unban").setStyle(ButtonStyle.Success).setDisabled(done),
-    new ButtonBuilder().setCustomId(`appeal:deny:${id}`).setLabel("Deny").setStyle(ButtonStyle.Danger).setDisabled(done),
-  );
-}
+const buttons = appealReviewButtons;
 
 registerComponent("appeal", async (interaction, [action, idStr]) => {
-  const a = await one("SELECT * FROM appeals WHERE id=$1", [Number(idStr)]);
+  const a = await getAppeal(Number(idStr));
   if (!a || String(a.guild_id) !== interaction.guildId)
     return interaction.reply({ content: "That appeal no longer exists.", flags: 1 << 6 });
   if (a.status !== "pending") return interaction.reply({ content: `Already ${a.status}.`, flags: 1 << 6 });
@@ -30,13 +25,10 @@ registerComponent("appeal", async (interaction, [action, idStr]) => {
 
   await interaction.deferUpdate();
   await query("UPDATE appeals SET status=$1, reviewed_by=$2 WHERE id=$3", [action === "approve" ? "approved" : "denied", interaction.user.id, a.id]);
-
-  const base = EmbedBuilder.from(interaction.message.embeds[0])
-    .setColor(action === "approve" ? COLORS.success : COLORS.danger)
-    .setTitle(`Ban appeal — ${action === "approve" ? "APPROVED" : "DENIED"}`)
-    .addFields({ name: action === "approve" ? "Approved by" : "Denied by", value: `<@${interaction.user.id}>` });
+  const fresh = await getAppeal(a.id);
 
   let note = "";
+  let caseNumber = null;
   if (action === "approve" && a.roblox_name) {
     const cfg = getGuildConfig(a.guild_id);
     const primary = defaultServer(a.guild_id);
@@ -64,7 +56,7 @@ registerComponent("appeal", async (interaction, [action, idStr]) => {
         executed: ran > 0,
         erlcServerId: primary?.id ?? null,
       });
-      base.addFields({ name: "Case", value: `#${c.case_number}`, inline: true });
+      caseNumber = c.case_number;
       note = ran > 0 ? "" : " (ER:LC not connected — logged only)";
       const g = interaction.client.guilds.cache.get(a.guild_id);
       if (g) await logCase(g, c, await renderCaseEmbed(g, c)).catch(() => {});
@@ -74,7 +66,7 @@ registerComponent("appeal", async (interaction, [action, idStr]) => {
     }
   }
 
-  await interaction.message.edit({ embeds: [base], components: [buttons(a.id, true)] });
+  await interaction.message.edit({ embeds: [appealEmbed(fresh, { caseNumber })], components: [buttons(a.id, true)] }).catch(() => {});
   const guild = interaction.client.guilds.cache.get(a.guild_id);
   await guild?.members
     .fetch(a.user_id)
@@ -122,20 +114,14 @@ export default {
     );
 
     const priors = robloxId ? await getSubjectCases(ctx.guild.id, "roblox", robloxId) : [];
-    const embed = new EmbedBuilder()
-      .setColor(COLORS.primary)
-      .setTitle("Ban appeal — pending")
-      .setDescription(`From <@${ctx.author.id}>${robloxName ? ` · Roblox **${robloxName}** \`${robloxId}\`` : " · *no Roblox account linked*"}`)
-      .addFields(
-        { name: "Appeal", value: ctx.args.reason.slice(0, 1024) },
-        { name: "Prior cases", value: priors.length ? priors.slice(0, 6).map((c) => `\`#${c.case_number}\` ${c.type} — ${c.reason || "—"}`).join("\n") : "none on record" },
-      )
-      .setFooter({ text: `Appeal #${a.id}` });
 
     const { channel } = await resolveSendable(ctx.client, ctx.config.appealChannel, ctx.guild.id);
     const dest = channel ?? ctx.channel;
-    const msg = await dest.send({ embeds: [embed], components: [buttons(a.id)] });
+    const msg = await dest.send({ embeds: [appealEmbed(a, { priors })], components: [buttons(a.id)] });
     await query("UPDATE appeals SET message_id=$1, channel_id=$2 WHERE id=$3", [msg.id, dest.id, a.id]);
+    await ctx.author
+      .send(`Your ban appeal (#${a.id}) in **${ctx.guild.name}** was submitted for review — you'll be DMed with the outcome.`)
+      .catch(() => {});
     await ctx.reply(ok(`Appeal #${a.id} submitted for review. You'll be DMed with the outcome.`));
   },
 };

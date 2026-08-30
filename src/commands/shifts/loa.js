@@ -1,19 +1,11 @@
-import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, time } from "discord.js";
+import { EmbedBuilder, time } from "discord.js";
 import { registerComponent } from "../../lib/components.js";
 import { resolveSendable } from "../../lib/modlog.js";
 import { hasPermissionInteraction } from "../../lib/permissions.js";
 import { COLORS, ok, err } from "../../lib/style.js";
-import { parseDuration, formatDuration } from "../../lib/util.js";
-import { createLoa, getLoa, attachLoaMessage, listLoa, setLoaStatus, isOnLoa } from "../../lib/loa.js";
+import { createLoa, getLoa, attachLoaMessage, listLoa, setLoaStatus, isOnLoa, loaEmbed, loaReviewButtons } from "../../lib/loa.js";
 
 const MAX = 90 * 24 * 60 * 60 * 1000;
-
-function reviewButtons(id, done = false) {
-  return new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId(`loa:approve:${id}`).setLabel("Approve").setStyle(ButtonStyle.Success).setDisabled(done),
-    new ButtonBuilder().setCustomId(`loa:deny:${id}`).setLabel("Deny").setStyle(ButtonStyle.Danger).setDisabled(done),
-  );
-}
 
 registerComponent("loa", async (interaction, [action, idStr]) => {
   const row = await getLoa(Number(idStr));
@@ -26,20 +18,14 @@ registerComponent("loa", async (interaction, [action, idStr]) => {
 
   await interaction.deferUpdate();
   const now = Date.now();
-  const newStatus = action === "approve" ? (row.starts_at <= now ? "active" : "pending-approved") : "denied";
+  // a future-dated approved LOA stays 'pending' and the scheduler flips it to 'active'; store the approver anyway
   await setLoaStatus(row.id, action === "approve" ? (row.starts_at <= now ? "active" : "pending") : "denied", interaction.user.id);
-  // (a future-dated approved LOA stays 'pending' and the scheduler flips it to 'active'; store approver anyway)
-
-  const base = EmbedBuilder.from(interaction.message.embeds[0])
-    .setColor(action === "approve" ? COLORS.success : COLORS.danger)
-    .setTitle(`LOA — ${action === "approve" ? "APPROVED" : "DENIED"}`)
-    .addFields({ name: action === "approve" ? "Approved by" : "Denied by", value: `<@${interaction.user.id}>` });
-  await interaction.message.edit({ embeds: [base], components: [reviewButtons(row.id, true)] });
+  const fresh = await getLoa(row.id);
+  await interaction.message.edit({ embeds: [loaEmbed(fresh)], components: [loaReviewButtons(row.id, true)] }).catch(() => {});
 
   const guild = interaction.client.guilds.cache.get(row.guild_id);
   const member = guild && (await guild.members.fetch(row.user_id).catch(() => null));
-  await member?.send(`Your LOA in **${guild.name}** was **${action === "approve" ? "approved" : "denied"}**.`).catch(() => {});
-  void newStatus;
+  await member?.send(`Your LOA request (#${row.id}) in **${guild.name}** was **${action === "approve" ? "approved" : "denied"}**.`).catch(() => {});
 });
 
 export default {
@@ -67,22 +53,13 @@ export default {
         const endsAt = startsAt + ctx.args.duration;
         const row = await createLoa({ guildId: ctx.guild.id, userId: ctx.author.id, reason: ctx.args.reason, startsAt, endsAt });
 
-        const embed = new EmbedBuilder()
-          .setColor(COLORS.warn)
-          .setTitle("LOA — pending review")
-          .setDescription(`<@${ctx.author.id}> requested leave.`)
-          .addFields(
-            { name: "From", value: time(Math.floor(startsAt / 1000), "D"), inline: true },
-            { name: "Until", value: time(Math.floor(endsAt / 1000), "D"), inline: true },
-            { name: "Length", value: formatDuration(ctx.args.duration), inline: true },
-            { name: "Reason", value: ctx.args.reason || "*none given*" },
-          )
-          .setFooter({ text: `LOA #${row.id}` });
-
         const { channel } = await resolveSendable(ctx.client, ctx.config.loaChannel, ctx.guild.id);
         const dest = channel ?? ctx.channel;
-        const msg = await dest.send({ embeds: [embed], components: [reviewButtons(row.id)] });
+        const msg = await dest.send({ embeds: [loaEmbed(row)], components: [loaReviewButtons(row.id)] });
         await attachLoaMessage(row.id, msg.id, dest.id);
+        await ctx.author
+          .send(`Your LOA request (#${row.id}) in **${ctx.guild.name}** was submitted for review — you'll be DMed with the decision.`)
+          .catch(() => {});
         await ctx.reply(ok(`LOA request #${row.id} submitted${channel ? ` to <#${dest.id}>` : ""}.`));
       },
     },

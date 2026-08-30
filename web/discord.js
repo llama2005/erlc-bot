@@ -133,6 +133,30 @@ export const deleteChannelMessage = (channelId, messageId) =>
     headers: { Authorization: `Bot ${config.discordToken}` },
   });
 
+export const editChannelMessage = (channelId, messageId, body) =>
+  fetch(`${API}/channels/${channelId}/messages/${messageId}`, {
+    method: "PATCH",
+    headers: { Authorization: `Bot ${config.discordToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+/** Best-effort DM to a user (opens the DM channel first). Never throws. */
+export async function dmUser(userId, content) {
+  try {
+    const res = await fetch(`${API}/users/@me/channels`, {
+      method: "POST",
+      headers: { Authorization: `Bot ${config.discordToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ recipient_id: userId }),
+    });
+    if (!res.ok) return false;
+    const { id } = await res.json();
+    const sent = await postChannelMessage(id, { content });
+    return sent.ok;
+  } catch {
+    return false;
+  }
+}
+
 let _botUser = null;
 export async function botIdentity() {
   if (_botUser) return _botUser;

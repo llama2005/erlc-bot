@@ -31,14 +31,15 @@ import {
 } from "../src/lib/cases.js";
 import { subjectStats } from "../src/lib/cases.js";
 import { leaderboard, userShiftStats, adjustShiftTime, listActiveShifts, wipeShifts } from "../src/lib/shifts.js";
-import { listPendingBanRequests, getBanRequest, resolveBanRequest } from "../src/lib/banRequests.js";
-import { listLoa, getLoa, setLoaStatus } from "../src/lib/loa.js";
-import { listAppeals, getAppeal, resolveAppeal } from "../src/lib/appeals.js";
+import { listPendingBanRequests, getBanRequest, resolveBanRequest, banRequestEmbed, banRequestButtons } from "../src/lib/banRequests.js";
+import { listLoa, getLoa, setLoaStatus, loaEmbed, loaReviewButtons } from "../src/lib/loa.js";
+import { listAppeals, getAppeal, resolveAppeal, appealEmbed, appealReviewButtons } from "../src/lib/appeals.js";
 import { listAutohints, addAutohint, removeAutohint, toggleAutohint } from "../src/lib/autohint.js";
 import { moderatorCaseStats } from "../src/lib/modstats.js";
 import { listTemplates, getTemplate, saveTemplate, resetTemplate, renderPayload, cleanEmbed, TEMPLATE_DEFS } from "../src/lib/templates.js";
 import { NODES, getPermGroups, upsertPermGroup, deletePermGroup } from "../src/lib/permissions.js";
 import { getGuideData } from "./guide.js";
+import { syncMessage, postCaseToModlog, refreshCaseModlog } from "./notify.js";
 import { erlc, ErlcError } from "../src/lib/erlc.js";
 import { formatDuration, parseDuration } from "../src/lib/util.js";
 import * as d from "./discord.js";
@@ -379,9 +380,15 @@ app.post("/dashboard/:guildId/cases/:n/:op", requireAuth, requireGuildAdmin, asy
         if (row?.log_channel_id) await d.deleteChannelMessage(row.log_channel_id, row.log_message_id).catch(() => {});
       } else {
         await voidCase(req.guild.id, n, req.user.id, req.body.reason || "via dashboard");
+        await refreshCaseModlog(req.guild.id, req.cfg, n);
       }
-    } else if (req.params.op === "reason" && req.body.reason) await editReason(req.guild.id, n, req.body.reason);
-    else if (req.params.op === "type" && req.body.type) await editType(req.guild.id, n, req.body.type);
+    } else if (req.params.op === "reason" && req.body.reason) {
+      await editReason(req.guild.id, n, req.body.reason);
+      await refreshCaseModlog(req.guild.id, req.cfg, n);
+    } else if (req.params.op === "type" && req.body.type) {
+      await editType(req.guild.id, n, req.body.type);
+      await refreshCaseModlog(req.guild.id, req.cfg, n);
+    }
   }
   res.redirect(`/dashboard/${req.guild.id}/cases?${new URLSearchParams(req.query).toString()}`);
 });
@@ -412,9 +419,18 @@ app.get("/dashboard/:guildId/loa", requireAuth, requireGuildAdmin, async (req, r
 });
 app.post("/dashboard/:guildId/loa/:id/:decision", requireAuth, requireGuildAdmin, async (req, res) => {
   const row = await getLoa(Number(req.params.id));
-  if (row && row.guild_id === req.guild.id) {
-    const s = { approve: "active", deny: "denied", end: "ended" }[req.params.decision];
-    if (s) await setLoaStatus(row.id, s, req.user.id);
+  const dec = req.params.decision;
+  if (row && row.guild_id === req.guild.id && ["approve", "deny", "end"].includes(dec)) {
+    const status = dec === "approve" ? (row.starts_at <= Date.now() ? "active" : "pending") : dec === "deny" ? "denied" : "ended";
+    if (await setLoaStatus(row.id, status, req.user.id)) {
+      const fresh = await getLoa(row.id);
+      await syncMessage(fresh.channel_id, fresh.message_id, {
+        embeds: [loaEmbed(fresh)],
+        components: [loaReviewButtons(fresh.id, true)],
+      });
+      const verb = dec === "approve" ? "approved" : dec === "deny" ? "denied" : "ended";
+      await d.dmUser(row.user_id, `Your LOA request (#${row.id}) in **${req.guild.name}** was **${verb}**.`);
+    }
   }
   res.redirect(`/dashboard/${req.guild.id}/loa`);
 });
@@ -431,6 +447,7 @@ app.post("/dashboard/:guildId/appeals/:id/:decision", requireAuth, requireGuildA
   if (a && a.guild_id === req.guild.id && a.status === "pending") {
     const approve = req.params.decision === "approve";
     await resolveAppeal(a.id, approve ? "approved" : "denied", req.user.id);
+    let caseRow = null;
     if (approve) {
       const servers = await getServers(req.guild.id);
       const primary = defaultServer(req.guild.id) || servers[0];
@@ -446,8 +463,8 @@ app.post("/dashboard/:guildId/appeals/:id/:decision", requireAuth, requireGuildA
           }
         }
       }
-      if (a.roblox_id)
-        await createCase({
+      if (a.roblox_id) {
+        caseRow = await createCase({
           guildId: req.guild.id,
           platform: "roblox",
           subjectId: a.roblox_id,
@@ -459,8 +476,15 @@ app.post("/dashboard/:guildId/appeals/:id/:decision", requireAuth, requireGuildA
           moderatorTag: `${req.user.username} (web)`,
           executed,
         });
+        await postCaseToModlog(req.guild.id, req.cfg, caseRow);
+      }
     }
-    await d.getGuildMember(req.guild.id, a.user_id); // touch
+    const fresh = await getAppeal(a.id);
+    await syncMessage(fresh.channel_id, fresh.message_id, {
+      embeds: [appealEmbed(fresh, { caseNumber: caseRow?.case_number })],
+      components: [appealReviewButtons(a.id, true)],
+    });
+    await d.dmUser(a.user_id, `Your ban appeal (#${a.id}) in **${req.guild.name}** was **${approve ? "approved" : "denied"}**.`);
   }
   res.redirect(`/dashboard/${req.guild.id}/appeals`);
 });
@@ -640,7 +664,7 @@ app.post("/dashboard/:guildId/banreqs/:id/:decision", requireAuth, requireGuildA
         }
       }
       const executed = ran > 0;
-      await createCase({
+      const caseRow = await createCase({
         guildId: req.guild.id,
         platform: "roblox",
         subjectId: request.roblox_id,
@@ -652,8 +676,19 @@ app.post("/dashboard/:guildId/banreqs/:id/:decision", requireAuth, requireGuildA
         moderatorTag: "ban request (web)",
         executed,
       });
+      await postCaseToModlog(req.guild.id, req.cfg, caseRow);
+      const fresh = await getBanRequest(id);
+      await syncMessage(fresh.channel_id, fresh.message_id, {
+        embeds: [await banRequestEmbed(fresh, { caseNumber: caseRow?.case_number })],
+        components: [banRequestButtons(id, true)],
+      });
     } else {
       await resolveBanRequest(id, "denied", req.user.id);
+      const fresh = await getBanRequest(id);
+      await syncMessage(fresh.channel_id, fresh.message_id, {
+        embeds: [await banRequestEmbed(fresh)],
+        components: [banRequestButtons(id, true)],
+      });
     }
   }
   res.redirect(`/dashboard/${req.guild.id}/banreqs`);

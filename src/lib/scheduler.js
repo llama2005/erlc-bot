@@ -5,7 +5,7 @@ import { getGuildConfig } from "./guildConfig.js";
 import { getServers } from "./erlcServers.js";
 import { listPurgeableGuilds, purgeGuildData } from "./botGuilds.js";
 import { resolveSendable } from "./modlog.js";
-import { tickLoa } from "./loa.js";
+import { tickLoa, loaEmbed, loaReviewButtons } from "./loa.js";
 import { dueAutohints, bumpAutohint } from "./autohint.js";
 import { dueReminders, deleteReminder } from "./reminders.js";
 import { activeStaff, moderatorCaseStats } from "./modstats.js";
@@ -23,10 +23,14 @@ async function runLoa(client) {
     const cfg = getGuildConfig(row.guild_id);
     const { channel } = await resolveSendable(client, cfg.loaChannel, row.guild_id);
     const state = activated.includes(row) ? "started" : "ended";
-    if (channel)
-      await channel
-        .send(`🌴 LOA #${row.id} for <@${row.user_id}> has **${state}**.`)
+    if (channel) await channel.send(`🌴 LOA #${row.id} for <@${row.user_id}> has **${state}**.`).catch(() => {});
+    if (row.message_id && row.channel_id) {
+      const mc = await client.channels.fetch(row.channel_id).catch(() => null);
+      await mc?.messages
+        .fetch(row.message_id)
+        .then((m) => m.edit({ embeds: [loaEmbed(row)], components: [loaReviewButtons(row.id, true)] }))
         .catch(() => {});
+    }
     const guild = client.guilds.cache.get(row.guild_id);
     await guild?.members
       .fetch(row.user_id)

@@ -1,4 +1,3 @@
-import { EmbedBuilder } from "discord.js";
 import { erlc, ErlcError } from "../../lib/erlc.js";
 import { resolvePlayer } from "../../lib/erlcModeration.js";
 import { createCase } from "../../lib/cases.js";
@@ -12,6 +11,7 @@ import {
   hasPendingRequest,
   fileBanRequest,
   banRequestButtons,
+  banRequestEmbed,
 } from "../../lib/banRequests.js";
 import { hasPermissionInteraction } from "../../lib/permissions.js";
 import { reportOffDuty } from "../../lib/dutyWatch.js";
@@ -41,12 +41,12 @@ registerComponent("banreq", async (interaction, [action, idStr]) => {
     invokedIn: interaction.channelId,
   }).catch(() => {});
 
-  const base = EmbedBuilder.from(interaction.message.embeds[0]);
-
   if (action === "deny") {
     await resolveBanRequest(id, "denied", interaction.user.id);
-    base.setColor(0xe74c3c).setTitle("Ban request — DENIED").addFields({ name: "Denied by", value: `<@${interaction.user.id}>` });
-    return interaction.message.edit({ embeds: [base], components: [banRequestButtons(id, true)] });
+    const fresh = await getBanRequest(id);
+    return interaction.message
+      .edit({ embeds: [await banRequestEmbed(fresh)], components: [banRequestButtons(id, true)] })
+      .catch(() => {});
   }
 
   // approve → execute the ban + open a case
@@ -79,12 +79,10 @@ registerComponent("banreq", async (interaction, [action, idStr]) => {
     erlcServerId: defaultServer(req.guild_id)?.id ?? null,
   });
 
-  base
-    .setColor(0x2ecc71)
-    .setTitle("Ban request — APPROVED")
-    .addFields({ name: "Approved by", value: `<@${interaction.user.id}>`, inline: true }, { name: "Case", value: `#${c.case_number}`, inline: true });
-  if (!executed) base.setFooter({ text: "in-game :ban failed — case logged anyway" });
-  await interaction.message.edit({ embeds: [base], components: [banRequestButtons(id, true)] });
+  const fresh = await getBanRequest(id);
+  const embed = await banRequestEmbed(fresh, { caseNumber: c.case_number });
+  if (!executed) embed.setFooter({ text: "in-game :ban failed — case logged anyway" });
+  await interaction.message.edit({ embeds: [embed], components: [banRequestButtons(id, true)] }).catch(() => {});
 
   const guild = interaction.client.guilds.cache.get(req.guild_id);
   if (guild) await logCase(guild, c, await renderCaseEmbed(guild, c)).catch(() => {});
