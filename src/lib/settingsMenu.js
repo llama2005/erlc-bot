@@ -17,6 +17,7 @@ const FIELDS = {
   aiEnabled: { kind: "bool", label: "AI feature", desc: "Enable the /ai command + @mention replies" },
   reasonRequired: { kind: "bool", label: "Require reason", desc: "Force a reason on every moderation action" },
   logExternalModeration: { kind: "bool", label: "Log external moderation", desc: "Case-log Discord bans/kicks/timeouts done outside the bot" },
+  hardVoid: { kind: "bool", label: "Hard-delete voids", desc: "Voiding a case deletes it + its log message (off = keep a greyed record)" },
   // channels
   modlogChannel: { kind: "channel", label: "Modlog channel", desc: "Where moderation cases are posted" },
   commandLogChannel: { kind: "channel", label: "Bot command log", desc: "Logs every bot command that runs" },

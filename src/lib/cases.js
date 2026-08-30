@@ -75,6 +75,10 @@ export const markExecuted = async (g, n, e) =>
 export const voidCase = async (g, n, by, r) =>
   (await query("UPDATE mod_cases SET voided=true, voided_by=$1, voided_reason=$2 WHERE guild_id=$3 AND case_number=$4 AND voided=false", [by, r || null, g, n])).rowCount > 0;
 
+/** Hard delete — returns the removed row (or null) so the caller can clean up its log message. */
+export const deleteCase = (g, n) =>
+  one("DELETE FROM mod_cases WHERE guild_id=$1 AND case_number=$2 RETURNING *", [g, n]);
+
 /** Non-voided case counts by type for a subject. */
 export async function subjectStats(g, p, s) {
   const rows = await many(

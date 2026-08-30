@@ -11,7 +11,8 @@ import {
 import { registerComponent } from "./components.js";
 import { postToModlog } from "./modlog.js";
 import { hasPermissionInteraction } from "./permissions.js";
-import { getCase, attachCaseMessage, editReason, editType, voidCase, subjectStats, DISCORD_TYPES } from "./cases.js";
+import { getGuildConfig } from "./guildConfig.js";
+import { getCase, attachCaseMessage, editReason, editType, voidCase, deleteCase, subjectStats, DISCORD_TYPES } from "./cases.js";
 import { listModTypes } from "./modTypes.js";
 import { headshotUrl } from "./roblox.js";
 import { caseEmbed, ok, err } from "./style.js";
@@ -20,15 +21,16 @@ import { formatDuration } from "./util.js";
 const EPH = MessageFlags.Ephemeral;
 
 /** The Edit / Change type / Void button row for a case (empty for non-case posts like /purge). */
-export function caseButtons(c) {
+export function caseButtons(c, { hard = false } = {}) {
   if (!c || !Number.isInteger(Number(c.case_number))) return [];
   const n = c.case_number;
   const done = !!c.voided;
+  const voidLabel = done ? "Voided" : hard ? "Delete" : "Void";
   return [
     new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId(`case:reason:${n}`).setLabel("Edit reason").setStyle(ButtonStyle.Secondary).setDisabled(done),
       new ButtonBuilder().setCustomId(`case:type:${n}`).setLabel("Change type").setStyle(ButtonStyle.Secondary).setDisabled(done),
-      new ButtonBuilder().setCustomId(`case:void:${n}`).setLabel(done ? "Voided" : "Void").setStyle(ButtonStyle.Danger).setDisabled(done),
+      new ButtonBuilder().setCustomId(`case:void:${n}`).setLabel(voidLabel).setStyle(ButtonStyle.Danger).setDisabled(done),
     ),
   ];
 }
@@ -75,7 +77,8 @@ export async function renderCaseEmbed(guild, c) {
  * Drop-in for `postToModlog(guild, embed)` — returns `{ ok, reason }`.
  */
 export async function logCase(guild, caseRow, embed) {
-  const res = await postToModlog(guild, embed, { components: caseButtons(caseRow) });
+  const hard = !!getGuildConfig(guild.id).hardVoid;
+  const res = await postToModlog(guild, embed, { components: caseButtons(caseRow, { hard }) });
   if (res.ok && res.message && Number.isInteger(Number(caseRow?.case_number))) {
     await attachCaseMessage(guild.id, caseRow.case_number, res.message.channelId, res.message.id).catch(() => {});
   }
@@ -89,7 +92,31 @@ async function refreshLogMessage(client, guildId, caseNumber) {
   const channel = await client.channels.fetch(c.log_channel_id).catch(() => null);
   const msg = channel && (await channel.messages.fetch(c.log_message_id).catch(() => null));
   if (!msg) return;
-  await msg.edit({ embeds: [await renderCaseEmbed(channel.guild, c)], components: caseButtons(c) }).catch(() => {});
+  const hard = !!getGuildConfig(guildId).hardVoid;
+  await msg.edit({ embeds: [await renderCaseEmbed(channel.guild, c)], components: caseButtons(c, { hard }) }).catch(() => {});
+}
+
+/** Delete the stored mod-log message for a case (used by hard-void). */
+async function deleteLogMessage(client, row) {
+  if (!row?.log_channel_id || !row?.log_message_id) return;
+  const channel = await client.channels.fetch(row.log_channel_id).catch(() => null);
+  const msg = channel && (await channel.messages.fetch(row.log_message_id).catch(() => null));
+  await msg?.delete().catch(() => {});
+}
+
+/**
+ * Void a case, honouring the guild's `hardVoid` setting.
+ * @returns {Promise<{ mode: "hard" | "soft" }>}
+ */
+export async function finishVoid(client, guild, caseRow, byId, reason) {
+  if (getGuildConfig(guild.id).hardVoid) {
+    const row = await deleteCase(guild.id, caseRow.case_number);
+    await deleteLogMessage(client, row ?? caseRow);
+    return { mode: "hard" };
+  }
+  await voidCase(guild.id, caseRow.case_number, byId, reason);
+  await refreshLogMessage(client, guild.id, caseRow.case_number);
+  return { mode: "soft" };
 }
 
 const validTypes = async (guildId, platform) =>
@@ -133,13 +160,19 @@ registerComponent("case", async (interaction, parts) => {
       );
     }
     if (kind === "void") {
+      const hard = !!getGuildConfig(gid).hardVoid;
       return interaction.showModal(
         new ModalBuilder()
           .setCustomId(`case:vmod:${n}`)
-          .setTitle(`Void · Case #${n}`)
+          .setTitle(`${hard ? "Delete" : "Void"} · Case #${n}`)
           .addComponents(
             new ActionRowBuilder().addComponents(
-              new TextInputBuilder().setCustomId("reason").setLabel("Void reason (optional)").setStyle(TextInputStyle.Short).setMaxLength(300).setRequired(false),
+              new TextInputBuilder()
+                .setCustomId("reason")
+                .setLabel(hard ? "Reason (optional — the case will be deleted)" : "Void reason (optional)")
+                .setStyle(TextInputStyle.Short)
+                .setMaxLength(300)
+                .setRequired(false),
             ),
           ),
       );
@@ -167,9 +200,11 @@ registerComponent("case", async (interaction, parts) => {
     }
     if (kind === "vmod") {
       const reason = interaction.fields.getTextInputValue("reason").trim() || null;
-      await voidCase(gid, n, interaction.user.id, reason);
-      await refreshLogMessage(interaction.client, gid, n);
-      return interaction.reply({ content: ok(`Case #${n} voided — it no longer counts toward history totals.`), flags: EPH });
+      const { mode } = await finishVoid(interaction.client, interaction.guild, c, interaction.user.id, reason);
+      return interaction.reply({
+        content: ok(mode === "hard" ? `Case #${n} deleted.` : `Case #${n} voided — it no longer counts toward history totals.`),
+        flags: EPH,
+      });
     }
     return;
   }

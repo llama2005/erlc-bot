@@ -127,6 +127,12 @@ export const postChannelMessage = (channelId, body) =>
     body: JSON.stringify(body),
   });
 
+export const deleteChannelMessage = (channelId, messageId) =>
+  fetch(`${API}/channels/${channelId}/messages/${messageId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bot ${config.discordToken}` },
+  });
+
 let _botUser = null;
 export async function botIdentity() {
   if (_botUser) return _botUser;

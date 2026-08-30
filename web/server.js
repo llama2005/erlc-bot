@@ -24,6 +24,7 @@ import {
   editReason,
   editType,
   voidCase,
+  deleteCase,
   createCase,
   ROBLOX_TYPES,
   DISCORD_TYPES,
@@ -262,6 +263,7 @@ app.post("/dashboard/:guildId", requireAuth, requireGuildAdmin, async (req, res)
     aiEnabled: b.aiEnabled === "on",
     reasonRequired: b.reasonRequired === "on",
     logExternalModeration: b.logExternalModeration === "on",
+    hardVoid: b.hardVoid === "on",
     modlogChannel: orNull(b.modlogChannel),
     commandLogChannel: orNull(b.commandLogChannel),
     banreqChannel: orNull(b.banreqChannel),
@@ -349,8 +351,14 @@ app.post("/dashboard/:guildId/cases/:n/:op", requireAuth, requireGuildAdmin, asy
   const n = Number(req.params.n);
   const c = await getCase(req.guild.id, n);
   if (c) {
-    if (req.params.op === "void") await voidCase(req.guild.id, n, req.user.id, req.body.reason || "via dashboard");
-    else if (req.params.op === "reason" && req.body.reason) await editReason(req.guild.id, n, req.body.reason);
+    if (req.params.op === "void") {
+      if (req.cfg.hardVoid) {
+        const row = await deleteCase(req.guild.id, n);
+        if (row?.log_channel_id) await d.deleteChannelMessage(row.log_channel_id, row.log_message_id).catch(() => {});
+      } else {
+        await voidCase(req.guild.id, n, req.user.id, req.body.reason || "via dashboard");
+      }
+    } else if (req.params.op === "reason" && req.body.reason) await editReason(req.guild.id, n, req.body.reason);
     else if (req.params.op === "type" && req.body.type) await editType(req.guild.id, n, req.body.type);
   }
   res.redirect(`/dashboard/${req.guild.id}/cases?${new URLSearchParams(req.query).toString()}`);

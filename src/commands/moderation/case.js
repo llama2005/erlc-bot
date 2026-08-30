@@ -1,5 +1,6 @@
 import { EmbedBuilder, time } from "discord.js";
-import { getCase, getLastCase, getLastCaseByMod, editReason, editType, voidCase } from "../../lib/cases.js";
+import { getCase, getLastCase, getLastCaseByMod, editReason, editType } from "../../lib/cases.js";
+import { finishVoid } from "../../lib/caseLog.js";
 import { listModTypes } from "../../lib/modTypes.js";
 import { DISCORD_TYPES } from "../../lib/cases.js";
 import { COLORS, actionVerb, ok, err } from "../../lib/style.js";
@@ -88,16 +89,19 @@ export default {
     },
 
     void: {
-      description: "Void (soft-delete) a case.",
+      description: "Void a case (deletes it, unless soft-void mode is on).",
       defer: true,
+      aliases: ["delete", "remove"],
       args: [CASE_ARG, { name: "reason", type: "text", required: false, description: "Why" }],
       async execute(ctx) {
         const c = await findCase(ctx, ctx.args.case);
         if (!c) return ctx.reply({ content: err("No such case."), ephemeral: true });
         if (!(await canEdit(ctx, c))) return ctx.reply({ content: err("You can only void your own cases (or need Manage Server)."), ephemeral: true });
         if (c.voided) return ctx.reply({ content: err(`Case #${c.case_number} is already voided.`), ephemeral: true });
-        await voidCase(ctx.guild.id, c.case_number, ctx.author.id, ctx.args.reason);
-        await ctx.reply(ok(`Case #${c.case_number} voided — no longer counts toward history totals.`));
+        const { mode } = await finishVoid(ctx.client, ctx.guild, c, ctx.author.id, ctx.args.reason);
+        await ctx.reply(
+          ok(mode === "hard" ? `Case #${c.case_number} deleted.` : `Case #${c.case_number} voided — no longer counts toward history totals.`),
+        );
       },
     },
   },

@@ -36,6 +36,7 @@ const COLUMNS = {
   ingameWarnTrigger: { col: "ingame_warn_trigger", def: () => "warn" },
   erlcBanAllServers: { col: "erlc_ban_all_servers", def: () => false },
   logExternalModeration: { col: "log_external_moderation", def: () => false },
+  hardVoid: { col: "hard_void", def: () => true },
 };
 
 function hydrate(row) {

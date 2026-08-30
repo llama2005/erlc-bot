@@ -26,6 +26,7 @@ function roleSelect(name, selected) {
     <label class="check"><input type="checkbox" name="aiEnabled" <%= cfg.aiEnabled ? "checked" : "" %>> AI command &amp; @mention replies</label>
     <label class="check"><input type="checkbox" name="reasonRequired" <%= cfg.reasonRequired ? "checked" : "" %>> Require a reason on every moderation action</label>
     <label class="check"><input type="checkbox" name="logExternalModeration" <%= cfg.logExternalModeration ? "checked" : "" %>> Log Discord bans/kicks/timeouts done outside the bot (needs the bot to have View Audit Log)</label>
+    <label class="check"><input type="checkbox" name="hardVoid" <%= cfg.hardVoid ? "checked" : "" %>> Voiding a case deletes it and its log message (uncheck to keep a greyed-out record instead)</label>
   </section>
 
   <section class="card">
