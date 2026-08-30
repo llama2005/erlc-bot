@@ -52,12 +52,15 @@ For **each** service → **Environment**, set the `sync: false` vars:
 | `DATABASE_URL` | ✅ | ✅ |
 | `DISCORD_TOKEN` | ✅ | ✅ |
 | `ANTHROPIC_API_KEY` | ✅ | — |
-| `ERLC_KEY` (optional fallback) | ✅ | — |
-| `DEV_GUILD_ID`, `OWNER_IDS` | ✅ | — |
+| `OWNER_IDS` | ✅ | — |
 | `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` | — | ✅ |
 | `DASHBOARD_URL` | — | ✅ = the dashboard's own `https://…onrender.com` URL |
 
-`SESSION_SECRET` is auto-generated. Deploy.
+`SESSION_SECRET` is auto-generated. `NODE_ENV=production` is set in `render.yaml` — this
+is the public multi-tenant mode: the shared `ERLC_KEY` fallback is **disabled** (every
+guild sets its own key via `/config erlc-key` or the dashboard) and slash commands
+register **globally** (~1h to first appear). Don't set `DEV_GUILD_ID` in production;
+it's a dev-instance-only fast path. Deploy.
 
 Then: **erlc-bot → Settings → Outbound IP Addresses** lists 3 IPs — allowlist all
 three at api.erlc.gg/server-owners, and add `<DASHBOARD_URL>/auth/callback` to the

@@ -118,6 +118,15 @@ export class CommandManager {
     } else {
       await this.client.application.commands.set(payload);
       console.log(`Registered ${payload.length} global slash commands (~1h to appear).`);
+      // If a dev-guild registration was ever done, clear its now-duplicate guild-scoped set.
+      const stale = process.env.DEV_GUILD_ID;
+      if (stale) {
+        const guild = await this.client.guilds.fetch(stale).catch(() => null);
+        if (guild) {
+          await guild.commands.set([]).catch(() => {});
+          console.log(`Cleared stale guild-scoped commands in ${guild.name}.`);
+        }
+      }
     }
   }
 

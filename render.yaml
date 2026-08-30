@@ -22,12 +22,10 @@ services:
         sync: false
       - key: ANTHROPIC_API_KEY
         sync: false
-      - key: ERLC_KEY
-        sync: false
-      - key: DEV_GUILD_ID
-        sync: false
       - key: OWNER_IDS
         sync: false
+      # NODE_ENV=production disables the shared ERLC_KEY fallback and forces global slash
+      # registration. Do not add ERLC_KEY / DEV_GUILD_ID here — they're dev-instance only.
 
   # --- the web dashboard ---
   - type: web

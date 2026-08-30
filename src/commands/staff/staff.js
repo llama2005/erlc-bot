@@ -1,6 +1,6 @@
 import { EmbedBuilder, time } from "discord.js";
 import { erlcStaff } from "../../lib/checks.js";
-import { config } from "../../config.js";
+import { resolveErlcKey } from "../../config.js";
 import { erlc, splitPlayer } from "../../lib/erlc.js";
 import { listActiveShifts } from "../../lib/shifts.js";
 
@@ -33,7 +33,7 @@ export default {
         : "nobody",
     });
 
-    const key = cfg.erlcKey || config.erlc.devKey;
+    const key = resolveErlcKey(cfg);
     if (key) {
       try {
         const players = await erlc.players(key);

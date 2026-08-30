@@ -1,4 +1,4 @@
-import { config } from "../../config.js";
+import { resolveErlcKey } from "../../config.js";
 import { erlc, ErlcError } from "../../lib/erlc.js";
 import { resolvePlayer, pm, notifyText } from "../../lib/erlcModeration.js";
 import { createCase, subjectStats } from "../../lib/cases.js";
@@ -11,12 +11,12 @@ import { sleep } from "../../lib/util.js";
 export { erlcStaff, erlcAdmin, manageGuild } from "../../lib/checks.js";
 
 /** The guild's ER:LC key, or null. */
-export const erlcKeyOrNull = (ctx) => ctx.config.erlcKey || config.erlc.devKey || null;
+export const erlcKeyOrNull = (ctx) => resolveErlcKey(ctx.config);
 
 /** The guild's ER:LC key, throwing a friendly error if unset (use for read/command endpoints). */
 export function keyFor(ctx) {
   const key = erlcKeyOrNull(ctx);
-  if (!key) throw new ErlcError("No ER:LC API key is set. An admin can set one with `/config erlc-key`.");
+  if (!key) throw new ErlcError("ER:LC isn't connected for this server yet — an admin can add a Server-Key with `/config erlc-key` or on the dashboard.");
   return key;
 }
 

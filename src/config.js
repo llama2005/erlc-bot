@@ -3,6 +3,9 @@ import "dotenv/config";
 const env = (name, fallback = "") => process.env[name] || fallback;
 
 export const config = {
+  // Production = the public multi-tenant deploy. Dev/self-host may use a single shared ER:LC key.
+  isDev: env("NODE_ENV") !== "production",
+
   discordToken: env("DISCORD_TOKEN"),
   anthropicApiKey: env("ANTHROPIC_API_KEY"),
   databaseUrl: env("DATABASE_URL"),
@@ -38,10 +41,21 @@ export const config = {
   },
 
   erlc: {
+    // Only ever used as a fallback in dev/self-host (see resolveErlcKey). In production every
+    // guild must set its own Server-Key — otherwise one server's key would serve strangers.
     devKey: env("ERLC_KEY"),
+    // The bot's PRC global API key (app identity). Shared across all tenants — one bucket.
     globalKey: env("ERLC_GLOBAL_KEY"),
   },
 };
+
+/**
+ * The ER:LC Server-Key to use for a guild: its own configured key, or — only outside
+ * production — the shared dev key. Returns null when nothing is available.
+ */
+export function resolveErlcKey(cfg) {
+  return cfg?.erlcKey || (config.isDev ? config.erlc.devKey : "") || null;
+}
 
 /** Throw if a required var is missing. Call from an entry point, not at import. */
 export function requireConfig(...names) {

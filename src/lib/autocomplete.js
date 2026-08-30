@@ -1,4 +1,4 @@
-import { config } from "../config.js";
+import { resolveErlcKey } from "../config.js";
 import { erlc, splitPlayer } from "./erlc.js";
 import { getGuildConfig } from "./guildConfig.js";
 import { listModTypes } from "./modTypes.js";
@@ -7,12 +7,18 @@ import { listModTypes } from "./modTypes.js";
 const CACHE_TTL = 5000;
 const playerCache = new Map(); // guildId -> { at, players }
 
+/** Drop cached player lists for guilds the bot is no longer in. */
+export function prunePlayerCache(activeGuildIds) {
+  const keep = new Set(activeGuildIds);
+  for (const id of playerCache.keys()) if (!keep.has(id)) playerCache.delete(id);
+}
+
 async function livePlayers(guildId) {
   const cached = playerCache.get(guildId);
   if (cached && Date.now() - cached.at < CACHE_TTL) return cached.players;
 
   const cfg = getGuildConfig(guildId);
-  const key = cfg.erlcKey || config.erlc.devKey;
+  const key = resolveErlcKey(cfg);
   if (!key) return [];
 
   let list = [];

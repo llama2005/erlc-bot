@@ -17,7 +17,8 @@ function reviewButtons(id, done = false) {
 
 registerComponent("loa", async (interaction, [action, idStr]) => {
   const row = await getLoa(Number(idStr));
-  if (!row) return interaction.reply({ content: "That LOA request no longer exists.", flags: 1 << 6 });
+  if (!row || String(row.guild_id) !== interaction.guildId)
+    return interaction.reply({ content: "That LOA request no longer exists.", flags: 1 << 6 });
   if (row.status !== "pending" && row.status !== "active")
     return interaction.reply({ content: `Already ${row.status}.`, flags: 1 << 6 });
   if (!(await hasPermissionInteraction(interaction, "shift.admin")))
@@ -78,7 +79,7 @@ export default {
           )
           .setFooter({ text: `LOA #${row.id}` });
 
-        const { channel } = await resolveSendable(ctx.client, ctx.config.loaChannel);
+        const { channel } = await resolveSendable(ctx.client, ctx.config.loaChannel, ctx.guild.id);
         const dest = channel ?? ctx.channel;
         const msg = await dest.send({ embeds: [embed], components: [reviewButtons(row.id)] });
         await attachLoaMessage(row.id, msg.id, dest.id);

@@ -3,13 +3,17 @@ import { getGuildConfig } from "./guildConfig.js";
 
 /**
  * Resolve a channel id to a sendable text channel the bot can post embeds in.
+ * When `expectGuildId` is given, the channel MUST belong to that guild — this stops
+ * one server's config (or a stale/hijacked id) from making the bot post into another.
  * @returns {Promise<{ channel: any|null, reason: string|null }>}
  */
-export async function resolveSendable(client, id) {
+export async function resolveSendable(client, id, expectGuildId = null) {
   if (!id) return { channel: null, reason: "not configured" };
   if (!client) return { channel: null, reason: "no client" };
   const ch = client.channels.cache.get(id) ?? (await client.channels.fetch(id).catch(() => null));
   if (!ch) return { channel: null, reason: `channel ${id} not found (deleted, or bot not in that server)` };
+  if (expectGuildId && ch.guild?.id !== expectGuildId)
+    return { channel: null, reason: "configured channel is in another server" };
   if (!ch.isTextBased?.() || ch.isDMBased?.()) return { channel: null, reason: "configured channel is not a text channel" };
   const me = ch.guild?.members?.me;
   if (me) {
@@ -23,7 +27,8 @@ export async function resolveSendable(client, id) {
 }
 
 /** Back-compat: just the channel or null. */
-export const resolveChannel = async (client, id) => (await resolveSendable(client, id)).channel;
+export const resolveChannel = async (client, id, expectGuildId = null) =>
+  (await resolveSendable(client, id, expectGuildId)).channel;
 
 /**
  * Post a pre-built embed to the guild's modlog channel.
@@ -35,7 +40,7 @@ export async function postToModlog(guild, embed) {
   const cfg = getGuildConfig(guild.id);
   if (!cfg.modlogChannel) return { ok: false, reason: null };
 
-  const { channel, reason } = await resolveSendable(guild.client, cfg.modlogChannel);
+  const { channel, reason } = await resolveSendable(guild.client, cfg.modlogChannel, guild.id);
   if (!channel) {
     console.warn(`modlog post failed for guild ${guild.id}: ${reason}`);
     return { ok: false, reason };
@@ -75,7 +80,7 @@ export async function sendModlog(guild, { action, target, moderator, reason, ext
 export async function logCommand(client, { guildId, user, commandName, argsText, channel }) {
   const cfg = getGuildConfig(guildId);
   if (!cfg.commandLogChannel) return;
-  const { channel: dest, reason } = await resolveSendable(client, cfg.commandLogChannel);
+  const { channel: dest, reason } = await resolveSendable(client, cfg.commandLogChannel, guildId);
   if (!dest) {
     console.warn(`command-log post failed for guild ${guildId}: ${reason}`);
     return;

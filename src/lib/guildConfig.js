@@ -100,6 +100,13 @@ export async function setGuildConfig(guildId, patch) {
   return next;
 }
 
+/** Drop cached config for guilds the bot is no longer in (called on GuildDelete + a periodic sweep). */
+export function pruneGuildConfigCache(activeGuildIds) {
+  const keep = new Set(activeGuildIds);
+  for (const id of cache.keys()) if (!keep.has(id)) cache.delete(id);
+  return cache.size;
+}
+
 /** Keep this process's cache fresh when another process (e.g. the web dashboard) writes config. */
 export async function startConfigSync() {
   await listen("guild_config", (guildId) => {

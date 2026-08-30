@@ -9,7 +9,7 @@ import { getSubjectCases } from "../../lib/cases.js";
 import { createCase } from "../../lib/cases.js";
 import { erlc, ErlcError } from "../../lib/erlc.js";
 import { getGuildConfig } from "../../lib/guildConfig.js";
-import { config } from "../../config.js";
+import { resolveErlcKey } from "../../config.js";
 import { COLORS, ok, err } from "../../lib/style.js";
 
 function buttons(id, done = false) {
@@ -21,7 +21,8 @@ function buttons(id, done = false) {
 
 registerComponent("appeal", async (interaction, [action, idStr]) => {
   const a = await one("SELECT * FROM appeals WHERE id=$1", [Number(idStr)]);
-  if (!a) return interaction.reply({ content: "That appeal no longer exists.", flags: 1 << 6 });
+  if (!a || String(a.guild_id) !== interaction.guildId)
+    return interaction.reply({ content: "That appeal no longer exists.", flags: 1 << 6 });
   if (a.status !== "pending") return interaction.reply({ content: `Already ${a.status}.`, flags: 1 << 6 });
   if (!(await hasPermissionInteraction(interaction, "mod.ban")))
     return interaction.reply({ content: "You need ban permission to decide appeals.", flags: 1 << 6 });
@@ -36,7 +37,7 @@ registerComponent("appeal", async (interaction, [action, idStr]) => {
 
   let note = "";
   if (action === "approve" && a.roblox_name) {
-    const key = getGuildConfig(a.guild_id).erlcKey || config.erlc.devKey;
+    const key = resolveErlcKey(getGuildConfig(a.guild_id));
     try {
       if (key) await erlc.command(key, `:unban ${a.roblox_name}`);
       const c = await createCase({
@@ -116,7 +117,7 @@ export default {
       )
       .setFooter({ text: `Appeal #${a.id}` });
 
-    const { channel } = await resolveSendable(ctx.client, ctx.config.appealChannel);
+    const { channel } = await resolveSendable(ctx.client, ctx.config.appealChannel, ctx.guild.id);
     const dest = channel ?? ctx.channel;
     const msg = await dest.send({ embeds: [embed], components: [buttons(a.id)] });
     await query("UPDATE appeals SET message_id=$1, channel_id=$2 WHERE id=$3", [msg.id, dest.id, a.id]);

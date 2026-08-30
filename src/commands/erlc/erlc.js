@@ -20,7 +20,7 @@ const permFlag = (perm) => PERM_FLAG[perm] ?? "•";
 
 function requireKey(ctx) {
   const key = erlcKey(ctx);
-  if (!key) throw new ErlcError("No ER:LC API key is set. An admin can set one with `/config erlc-key`.");
+  if (!key) throw new ErlcError("ER:LC isn't connected for this server yet — an admin can add a Server-Key with `/config erlc-key` or on the dashboard.");
   return key;
 }
 

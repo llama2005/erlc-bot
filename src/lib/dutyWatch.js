@@ -33,7 +33,7 @@ export async function reportOffDuty(client, { guild, userId, userTag, action, de
     if (await getActiveShift(guild.id, userId)) return; // clocked in — fine
     if (await isOnLoa(guild.id, userId)) return; // on approved leave — excused
 
-    const { channel } = await resolveSendable(client, cfg.staffAlertChannel);
+    const { channel } = await resolveSendable(client, cfg.staffAlertChannel, guild.id);
     if (!channel) return;
 
     const embed = new EmbedBuilder()

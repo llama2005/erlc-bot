@@ -11,7 +11,7 @@ const HINT = {
 
 async function announce(ctx, kind) {
   const cfg = ctx.config;
-  const dest = (await resolveChannel(ctx.client, cfg.sessionChannel)) ?? ctx.channel;
+  const dest = (await resolveChannel(ctx.client, cfg.sessionChannel, ctx.guild.id)) ?? ctx.channel;
   const key = erlcKey(ctx);
 
   // gather placeholder values

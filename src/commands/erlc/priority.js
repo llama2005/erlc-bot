@@ -28,7 +28,7 @@ export default {
     const tpl = await getTemplate(ctx.guild.id, "priority");
     const payload = renderPayload(tpl, vars);
 
-    const { channel } = await resolveSendable(ctx.client, ctx.config.sessionChannel);
+    const { channel } = await resolveSendable(ctx.client, ctx.config.sessionChannel, ctx.guild.id);
     const target = channel ?? ctx.channel;
     await target.send(payload);
 

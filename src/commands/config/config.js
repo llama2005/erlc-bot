@@ -158,16 +158,14 @@ export default {
           return reply(`${spec.label} cleared.`);
         }
         const id = value.match(/\d{15,25}/)?.[0];
-        const channel =
-          (id && ctx.guild.channels.cache.get(id)) ||
-          (id && (await ctx.client.channels.fetch(id).catch(() => null)));
+        const channel = id && ctx.guild.channels.cache.get(id);
         if (!channel || !channel.isTextBased?.() || channel.isDMBased?.())
-          return reply("Give a text channel (mention or ID). It may be in another server the bot is in. Or `none`.");
+          return reply("Give a text channel in this server (mention or ID), or `none`.");
         // ticket-category expects a category channel (type 4)
         if (spec.field === "ticketCategory" && channel.type !== 4)
           return reply("Give a **category** channel for `ticket-category`.");
         await setGuildConfig(ctx.guild.id, { [spec.field]: channel.id });
-        return reply(`${spec.label} set to <#${channel.id}>${channel.guildId !== ctx.guild.id ? " (external server)" : ""}.`);
+        return reply(`${spec.label} set to <#${channel.id}>.`);
       }
       case "word": {
         if (clearing) {

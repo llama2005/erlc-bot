@@ -17,7 +17,7 @@ export default {
     { name: "ping", type: "role", required: false, description: "Role to ping" },
   ],
   async execute(ctx) {
-    const ch = ctx.args.channel ?? (await resolveChannel(ctx.client, ctx.config.announceChannel)) ?? ctx.channel;
+    const ch = ctx.args.channel ?? (await resolveChannel(ctx.client, ctx.config.announceChannel, ctx.guild.id)) ?? ctx.channel;
     if (!ch?.isTextBased?.()) return ctx.reply({ content: err("Pick a text channel, or set an announcement channel with `/config announce-channel`."), ephemeral: true });
 
     const tpl = await getTemplate(ctx.guild.id, "announcement");

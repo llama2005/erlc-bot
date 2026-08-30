@@ -41,6 +41,35 @@ export const getGuildChannels = (guildId) => bot(`/guilds/${guildId}/channels`);
 export const getGuildRoles = (guildId) => bot(`/guilds/${guildId}/roles`);
 export const getGuildMember = (guildId, userId) => bot(`/guilds/${guildId}/members/${userId}`).catch(() => null);
 
+// --- cross-tenant guards: a dashboard admin may only target channels/roles in THEIR guild ---
+const guildIdCache = new Map(); // `${kind}:${guildId}` -> { ids: Set<string>, at: number }
+const GUILD_IDS_TTL = 60 * 1000;
+
+async function idsFor(kind, guildId, fetcher) {
+  const cacheKey = `${kind}:${guildId}`;
+  const hit = guildIdCache.get(cacheKey);
+  if (hit && Date.now() - hit.at < GUILD_IDS_TTL) return hit.ids;
+  const list = await fetcher(guildId).catch(() => null);
+  if (!list) return hit?.ids ?? null; // fall back to a stale set rather than failing open
+  const ids = new Set(list.map((x) => String(x.id)));
+  guildIdCache.set(cacheKey, { ids, at: Date.now() });
+  return ids;
+}
+
+/** True only if `channelId` is a real channel in `guildId`. */
+export async function channelInGuild(guildId, channelId) {
+  if (!channelId) return false;
+  const ids = await idsFor("chan", guildId, getGuildChannels);
+  return ids ? ids.has(String(channelId)) : false;
+}
+
+/** True only if `roleId` is a real role in `guildId`. */
+export async function roleInGuild(guildId, roleId) {
+  if (!roleId) return false;
+  const ids = await idsFor("role", guildId, getGuildRoles);
+  return ids ? ids.has(String(roleId)) : false;
+}
+
 const nameCache = new Map(); // `${guild}:${user}` -> { name, at }
 const NAME_TTL = 10 * 60 * 1000;
 

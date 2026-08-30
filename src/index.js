@@ -5,8 +5,9 @@ import { CommandManager } from "./lib/CommandManager.js";
 import { getPublicIp } from "./lib/publicIp.js";
 import { startErlcPoller } from "./lib/erlcPoller.js";
 import { startScheduler } from "./lib/scheduler.js";
-import { warmGuildConfigs, ensureGuildConfig, startConfigSync } from "./lib/guildConfig.js";
-import { startPermSync } from "./lib/permissions.js";
+import { warmGuildConfigs, ensureGuildConfig, startConfigSync, pruneGuildConfigCache } from "./lib/guildConfig.js";
+import { startPermSync, prunePermCache } from "./lib/permissions.js";
+import { prunePlayerCache } from "./lib/autocomplete.js";
 import { syncBotGuild, removeBotGuild, syncAllBotGuilds } from "./lib/botGuilds.js";
 
 requireConfig("DISCORD_TOKEN", "ANTHROPIC_API_KEY", "DATABASE_URL");
@@ -41,19 +42,36 @@ client.once(Events.ClientReady, async (c) => {
   getPublicIp().then((ip) => ip && console.log(`Public IP: ${ip} (allowlist at https://api.erlc.gg/server-owners for in-game commands)`));
 
   await manager.load();
-  const devGuild = config.devGuildId || (c.guilds.cache.size === 1 ? c.guilds.cache.firstKey() : "");
+  // Public bot → always register globally. DEV_GUILD_ID is a dev-instance-only fast path
+  // (guild-scoped commands appear instantly; global takes ~1h to propagate).
+  const devGuild = config.isDev ? config.devGuildId : "";
   await manager.registerSlashCommands(devGuild).catch((e) => console.error("Slash registration failed:", e));
 
   await syncAllBotGuilds(c).catch((e) => console.error("botGuilds sync failed:", e.message));
   startErlcPoller(c);
   startScheduler(c);
+
+  // Evict in-memory per-guild caches for guilds the bot has left.
+  const sweepCaches = () => {
+    const active = [...c.guilds.cache.keys()];
+    pruneGuildConfigCache(active);
+    prunePermCache(active);
+    prunePlayerCache(active);
+  };
+  setInterval(sweepCaches, 30 * 60_000).unref?.();
 });
 
 client.on(Events.GuildCreate, (guild) => {
   ensureGuildConfig(guild.id).catch(() => {});
   syncBotGuild(guild).catch(() => {});
 });
-client.on(Events.GuildDelete, (guild) => removeBotGuild(guild.id).catch(() => {}));
+client.on(Events.GuildDelete, (guild) => {
+  removeBotGuild(guild.id).catch(() => {});
+  const active = [...client.guilds.cache.keys()];
+  pruneGuildConfigCache(active);
+  prunePermCache(active);
+  prunePlayerCache(active);
+});
 
 client.on(Events.MessageCreate, (message) => {
   manager.handleMessage(message).catch((e) => console.error("handleMessage error:", e));

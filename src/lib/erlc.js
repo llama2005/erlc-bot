@@ -11,6 +11,17 @@ const MAX_QUEUED = 4;
 const lastCommandAt = new Map();
 const queues = new Map(); // key -> { chain: Promise, pending: number }
 
+// Drop idle per-key queue state so the Maps don't grow one entry per guild forever.
+setInterval(() => {
+  const cutoff = Date.now() - 5 * 60_000;
+  for (const [key, q] of queues) {
+    if (q.pending === 0 && (lastCommandAt.get(key) || 0) < cutoff) {
+      queues.delete(key);
+      lastCommandAt.delete(key);
+    }
+  }
+}, 5 * 60_000).unref?.();
+
 function enqueueCommand(key, fn) {
   const q = queues.get(key) || { chain: Promise.resolve(), pending: 0 };
   if (q.pending >= MAX_QUEUED) {

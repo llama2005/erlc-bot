@@ -1,4 +1,4 @@
-import { config } from "../config.js";
+import { resolveErlcKey } from "../config.js";
 import { erlc, splitPlayer, ErlcError } from "./erlc.js";
 import { getGuildConfig } from "./guildConfig.js";
 import { getLinkByRoblox } from "./links.js";
@@ -38,7 +38,7 @@ async function resolveModerator(entryPlayer) {
 export async function autologCommandEntries(client, guildId, entries, players) {
   const cfg = getGuildConfig(guildId);
   if (!cfg.ingameAutolog) return 0;
-  const key = cfg.erlcKey || config.erlc.devKey;
+  const key = resolveErlcKey(cfg);
   const trigger = (cfg.ingameWarnTrigger || "warn").toLowerCase();
   const pmWarnRe = new RegExp(`^:pm\\s+(\\S+)\\s+${trigger}\\b\\s*(.*)$`, "i");
 

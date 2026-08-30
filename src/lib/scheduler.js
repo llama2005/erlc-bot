@@ -1,5 +1,5 @@
 import { EmbedBuilder, time } from "discord.js";
-import { config } from "../config.js";
+import { resolveErlcKey } from "../config.js";
 import { many, query } from "./pg.js";
 import { erlc } from "./erlc.js";
 import { getGuildConfig } from "./guildConfig.js";
@@ -16,14 +16,14 @@ const WEEK = 7 * 24 * 60 * 60 * 1000;
 let timer = null;
 
 async function keyFor(guildId) {
-  return getGuildConfig(guildId).erlcKey || config.erlc.devKey || null;
+  return resolveErlcKey(getGuildConfig(guildId));
 }
 
 async function runLoa(client) {
   const { activated, ended } = await tickLoa();
   for (const row of [...activated, ...ended]) {
     const cfg = getGuildConfig(row.guild_id);
-    const { channel } = await resolveSendable(client, cfg.loaChannel);
+    const { channel } = await resolveSendable(client, cfg.loaChannel, row.guild_id);
     const state = activated.includes(row) ? "started" : "ended";
     if (channel)
       await channel
@@ -62,7 +62,7 @@ async function runWeeklyQuota(client) {
   );
   for (const { guild_id } of rows) {
     const cfg = getGuildConfig(guild_id);
-    const { channel } = await resolveSendable(client, cfg.quotaChannel);
+    const { channel } = await resolveSendable(client, cfg.quotaChannel, guild_id);
     if (!channel) continue;
     const since = now - WEEK;
     const staff = await activeStaff(guild_id, since);
@@ -93,16 +93,26 @@ async function runWeeklyQuota(client) {
   }
 }
 
+let quotaTimer = null;
+
 export function startScheduler(client) {
   if (timer) return;
+  // Fast loop: time-sensitive, cheap, DB-filtered work.
   const tick = async () => {
     await runLoa(client).catch((e) => console.error("scheduler loa:", e.message));
     await runAutohints(client).catch((e) => console.error("scheduler autohints:", e.message));
     await runReminders(client).catch((e) => console.error("scheduler reminders:", e.message));
-    await runWeeklyQuota(client).catch((e) => console.error("scheduler quota:", e.message));
   };
   timer = setInterval(() => tick().catch(() => {}), 30_000);
   timer.unref?.();
   setTimeout(() => tick().catch(() => {}), 8000);
+
+  // Slow loop: the weekly report does per-user stat queries + a send per guild, so it gets
+  // its own cadence and can never stretch the 30s tick when many guilds qualify at once.
+  const quotaTick = () => runWeeklyQuota(client).catch((e) => console.error("scheduler quota:", e.message));
+  quotaTimer = setInterval(quotaTick, 5 * 60_000);
+  quotaTimer.unref?.();
+  setTimeout(quotaTick, 20_000);
+
   console.log("Scheduler running (LOA / autohints / reminders / weekly quota)");
 }

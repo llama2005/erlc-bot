@@ -75,6 +75,13 @@ export async function startPermSync() {
   await listen("perm_groups", (guildId) => loadGroups(guildId).catch(() => {}));
 }
 
+/** Drop cached perm groups for guilds the bot is no longer in. */
+export function prunePermCache(activeGuildIds) {
+  const keep = new Set(activeGuildIds);
+  for (const id of cache.keys()) if (!keep.has(id)) cache.delete(id);
+  return cache.size;
+}
+
 // ---- the check ----
 
 function memberRoleIds(ctx) {

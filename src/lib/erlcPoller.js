@@ -1,5 +1,5 @@
 import { EmbedBuilder, time } from "discord.js";
-import { config } from "../config.js";
+import { resolveErlcKey } from "../config.js";
 import { one, query } from "./pg.js";
 import { erlc, splitPlayer, ErlcError } from "./erlc.js";
 import { getGuildConfig, ensureGuildConfig } from "./guildConfig.js";
@@ -86,7 +86,7 @@ async function checkServerStatus(client, guildId, key, cfg) {
     [guildId, online, players, Date.now()],
   );
   if (prev && prev.online !== null && prev.online !== online) {
-    const { channel } = await resolveSendable(client, cfg.statusChannel);
+    const { channel } = await resolveSendable(client, cfg.statusChannel, guildId);
     if (channel)
       await channel
         .send({
@@ -106,11 +106,12 @@ async function checkServerStatus(client, guildId, key, cfg) {
 async function pollGuild(client, guildId) {
   await ensureGuildConfig(guildId);
   const cfg = getGuildConfig(guildId);
-  const key = cfg.erlcKey || config.erlc.devKey;
-  if (!key) return;
 
   const wantsLogs = JOBS.some(([, field]) => cfg[field]);
-  if (!wantsLogs && !cfg.ingameAutolog && !cfg.statusChannel) return; // nothing to do
+  if (!wantsLogs && !cfg.ingameAutolog && !cfg.statusChannel) return false; // nothing to do
+
+  const key = resolveErlcKey(cfg);
+  if (!key) return false;
 
   await checkServerStatus(client, guildId, key, cfg).catch(() => {});
 
@@ -122,7 +123,7 @@ async function pollGuild(client, guildId) {
     const channelId = cfg[field];
     const autolog = type === "command" && cfg.ingameAutolog;
     if (!channelId && !autolog) continue;
-    const channel = channelId ? await resolveChannel(client, channelId) : null;
+    const channel = channelId ? await resolveChannel(client, channelId, guildId) : null;
     if (!channelId && !autolog) continue;
 
     let entries;
@@ -158,17 +159,39 @@ async function pollGuild(client, guildId) {
     if (maxTs > cursor) await setCursor(guildId, type, maxTs);
     await sleep(400); // gentle spacing between endpoints
   }
+  return true;
 }
 
 let timer = null;
+const POLL_CONCURRENCY = Math.max(1, Number(process.env.ERLC_POLL_CONCURRENCY || 5));
+
+/** Run `worker` over `items` with at most `limit` in flight at once. */
+async function pool(items, limit, worker) {
+  const queue = [...items];
+  let done = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(limit, queue.length) }, async () => {
+      while (queue.length) {
+        const item = queue.shift();
+        if (await worker(item)) done++;
+      }
+    }),
+  );
+  return done;
+}
 
 export function startErlcPoller(client) {
   if (timer) return;
   const tick = async () => {
-    for (const guildId of client.guilds.cache.keys()) {
-      await pollGuild(client, guildId).catch((e) => console.error(`ERLC poll (${guildId}):`, e.message));
-      await sleep(1500);
-    }
+    const started = Date.now();
+    const guildIds = [...client.guilds.cache.keys()];
+    const polled = await pool(guildIds, POLL_CONCURRENCY, (guildId) =>
+      pollGuild(client, guildId).catch((e) => {
+        console.error(`ERLC poll (${guildId}):`, e.message);
+        return false;
+      }),
+    );
+    if (polled) console.log(`ER:LC poll: ${polled}/${guildIds.length} guilds, ${Date.now() - started}ms`);
   };
   timer = setInterval(() => tick().catch(() => {}), INTERVAL_MS);
   timer.unref?.();

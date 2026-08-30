@@ -1,8 +1,8 @@
-import { config } from "../../config.js";
+import { resolveErlcKey } from "../../config.js";
 
 export { erlcStaff, manageGuild } from "../../lib/checks.js";
 
-/** Resolve the ER:LC Server-Key for this guild (guild-configured, else the bot-wide fallback). */
+/** Resolve the ER:LC Server-Key for this guild (guild-configured; dev fallback only outside prod). */
 export function erlcKey(ctx) {
-  return ctx.config.erlcKey || config.erlc.devKey || null;
+  return resolveErlcKey(ctx.config);
 }

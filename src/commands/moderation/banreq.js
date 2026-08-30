@@ -4,7 +4,7 @@ import { resolvePlayer } from "../../lib/erlcModeration.js";
 import { headshotUrl } from "../../lib/roblox.js";
 import { createCase } from "../../lib/cases.js";
 import { getGuildConfig } from "../../lib/guildConfig.js";
-import { config } from "../../config.js";
+import { resolveErlcKey } from "../../config.js";
 import { registerComponent } from "../../lib/components.js";
 import { sendModlog } from "../../lib/modlog.js";
 import {
@@ -21,7 +21,7 @@ import { PLAYER_ARG } from "./_shared.js";
 const PENDING_COLOR = 0x3498db;
 
 function keyForGuild(guildId) {
-  return getGuildConfig(guildId).erlcKey || config.erlc.devKey || null;
+  return resolveErlcKey(getGuildConfig(guildId));
 }
 
 const isApprover = (interaction) => hasPermissionInteraction(interaction, "mod.banreq.approve");
@@ -36,7 +36,8 @@ function buttons(id, disabled = false) {
 registerComponent("banreq", async (interaction, [action, idStr]) => {
   const id = Number(idStr);
   const req = await getBanRequest(id);
-  if (!req) return interaction.reply({ content: "That ban request no longer exists.", ephemeral: true });
+  if (!req || String(req.guild_id) !== interaction.guildId)
+    return interaction.reply({ content: "That ban request no longer exists.", ephemeral: true });
   if (req.status !== "pending")
     return interaction.reply({ content: `Already ${req.status} by <@${req.resolved_by}>.`, ephemeral: true });
   if (!(await isApprover(interaction)))

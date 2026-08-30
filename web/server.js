@@ -4,7 +4,7 @@ import express from "express";
 import cookieParser from "cookie-parser";
 import crypto from "node:crypto";
 
-import { config, requireConfig } from "../src/config.js";
+import { config, requireConfig, resolveErlcKey } from "../src/config.js";
 import { initSchema } from "../src/lib/pg.js";
 import { refreshGuildConfig, setGuildConfig, startConfigSync } from "../src/lib/guildConfig.js";
 import { getBotGuild, listBotGuilds } from "../src/lib/botGuilds.js";
@@ -148,7 +148,7 @@ app.get("/dashboard/:guildId/overview", requireAuth, requireGuildAdmin, async (r
     getRecentCases(req.guild.id, 8),
     leaderboard(req.guild.id, since),
     (async () => {
-      const key = cfg.erlcKey || config.erlc.devKey;
+      const key = resolveErlcKey(cfg);
       if (!key || !cfg.statusChannel) return null;
       return erlc.server(key).catch(() => "offline");
     })(),
@@ -189,9 +189,34 @@ app.get("/dashboard/:guildId", requireAuth, requireGuildAdmin, async (req, res) 
   });
 });
 
+const CHANNEL_FIELDS = [
+  "modlogChannel", "commandLogChannel", "banreqChannel", "joinLogChannel", "killLogChannel",
+  "ingameLogChannel", "modcallLogChannel", "sessionChannel", "staffAlertChannel", "loaChannel",
+  "appealChannel", "statusChannel", "announceChannel", "quotaChannel", "ticketCategory",
+];
+const ROLE_FIELDS = ["erlcStaffRole", "erlcAdminRole", "shiftRole", "sessionPingRole", "ticketStaffRole"];
+
 app.post("/dashboard/:guildId", requireAuth, requireGuildAdmin, async (req, res) => {
   const b = req.body;
   const orNull = (v) => (v && v !== "" ? v : null);
+
+  // Reject any channel/role that isn't actually in this guild — a crafted POST must not
+  // point one server's logs (or the bot's sends) at another server the bot happens to be in.
+  const [chanList, roleList] = await Promise.all([
+    d.getGuildChannels(req.guild.id).catch(() => null),
+    d.getGuildRoles(req.guild.id).catch(() => null),
+  ]);
+  const chanIds = chanList && new Set(chanList.map((c) => String(c.id)));
+  const roleIds = roleList && new Set(roleList.map((r) => String(r.id)));
+  const bad = [];
+  if (chanIds) for (const f of CHANNEL_FIELDS) if (orNull(b[f]) && !chanIds.has(String(b[f]).trim())) bad.push(f);
+  if (roleIds) for (const f of ROLE_FIELDS) if (orNull(b[f]) && !roleIds.has(String(b[f]).trim())) bad.push(f);
+  if (bad.length)
+    return res.status(400).render("error", {
+      user: req.user,
+      message: `Those channels/roles aren't in this server: ${bad.join(", ")}.`,
+    });
+
   const patch = {
     prefix: (b.prefix || "!").slice(0, 5),
     aiEnabled: b.aiEnabled === "on",
@@ -339,7 +364,7 @@ app.post("/dashboard/:guildId/appeals/:id/:decision", requireAuth, requireGuildA
     const approve = req.params.decision === "approve";
     await resolveAppeal(a.id, approve ? "approved" : "denied", req.user.id);
     if (approve) {
-      const key = req.cfg.erlcKey || config.erlc.devKey;
+      const key = resolveErlcKey(req.cfg);
       let executed = false;
       if (key && a.roblox_name) {
         try {
@@ -416,34 +441,42 @@ app.post("/dashboard/:guildId/templates/:key", requireAuth, requireGuildAdmin, a
   res.redirect(`/dashboard/${req.guild.id}/templates?saved=${key}`);
 });
 
+// A dashboard admin may only make the bot post into a channel / ping a role that
+// actually belongs to the guild they're managing — never another tenant's server.
+async function resolveSendTarget(req) {
+  const channelId = (req.body.channelId || "").trim();
+  const ping = (req.body.ping || "").trim();
+  if (!channelId || !(await d.channelInGuild(req.guild.id, channelId))) return null;
+  if (ping && !(await d.roleInGuild(req.guild.id, ping))) return null;
+  return { channelId, ping };
+}
+
 app.post("/dashboard/:guildId/templates/:key/send", requireAuth, requireGuildAdmin, async (req, res) => {
   const key = req.params.key;
-  const channelId = (req.body.channelId || "").trim();
-  if (!channelId) return res.redirect(`/dashboard/${req.guild.id}/templates`);
+  const target = await resolveSendTarget(req);
+  if (!target) return res.redirect(`/dashboard/${req.guild.id}/templates?sent=0`);
   const tpl = await getTemplate(req.guild.id, key);
   const vars = {};
   for (const v of TEMPLATE_DEFS[key]?.vars || []) vars[v] = (req.body["v_" + v] || "").trim();
   if (!vars.staffname) vars.staffname = req.user.username;
   if (!vars.staff) vars.staff = `<@${req.user.id}>`;
   const payload = renderPayload(tpl, vars);
-  const ping = (req.body.ping || "").trim();
-  if (ping) payload.content = `<@&${ping}> ${payload.content || ""}`.trim();
-  payload.allowed_mentions = { roles: ping ? [ping] : [], parse: ["users"] };
-  const r = await d.postChannelMessage(channelId, payload);
+  if (target.ping) payload.content = `<@&${target.ping}> ${payload.content || ""}`.trim();
+  payload.allowed_mentions = { roles: target.ping ? [target.ping] : [], parse: ["users"] };
+  const r = await d.postChannelMessage(target.channelId, payload);
   res.redirect(`/dashboard/${req.guild.id}/templates?sent=${r.ok ? "1" : "0"}`);
 });
 
 app.post("/dashboard/:guildId/send", requireAuth, requireGuildAdmin, async (req, res) => {
   const b = req.body;
-  const channelId = (b.channelId || "").trim();
-  if (!channelId) return res.redirect(`/dashboard/${req.guild.id}/templates`);
+  const target = await resolveSendTarget(req);
+  if (!target) return res.redirect(`/dashboard/${req.guild.id}/templates?sent=0`);
   const embed = cleanEmbed(b);
   const payload = renderPayload({ content: b.content || "", embed }, {});
-  const ping = (b.ping || "").trim();
-  if (ping) payload.content = `<@&${ping}> ${payload.content || ""}`.trim();
-  payload.allowed_mentions = { roles: ping ? [ping] : [], parse: ["users"] };
+  if (target.ping) payload.content = `<@&${target.ping}> ${payload.content || ""}`.trim();
+  payload.allowed_mentions = { roles: target.ping ? [target.ping] : [], parse: ["users"] };
   if (!payload.content && !payload.embeds.length) return res.redirect(`/dashboard/${req.guild.id}/templates?sent=0`);
-  const r = await d.postChannelMessage(channelId, payload);
+  const r = await d.postChannelMessage(target.channelId, payload);
   res.redirect(`/dashboard/${req.guild.id}/templates?sent=${r.ok ? "1" : "0"}`);
 });
 
@@ -479,11 +512,10 @@ app.get("/dashboard/:guildId/banreqs", requireAuth, requireGuildAdmin, async (re
 app.post("/dashboard/:guildId/banreqs/:id/:decision", requireAuth, requireGuildAdmin, async (req, res) => {
   const id = Number(req.params.id);
   const request = await getBanRequest(id);
-  if (request && request.status === "pending") {
+  if (request && String(request.guild_id) === req.guild.id && request.status === "pending") {
     if (req.params.decision === "approve") {
       await resolveBanRequest(id, "approved", req.user.id);
-      const cfg = req.cfg;
-      const key = cfg.erlcKey || config.erlc.devKey;
+      const key = resolveErlcKey(req.cfg);
       let executed = true;
       try {
         if (!key) throw new ErlcError("no key");
