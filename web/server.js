@@ -38,6 +38,7 @@ import { listAutohints, addAutohint, removeAutohint, toggleAutohint } from "../s
 import { moderatorCaseStats } from "../src/lib/modstats.js";
 import { listTemplates, getTemplate, saveTemplate, resetTemplate, renderPayload, cleanEmbed, TEMPLATE_DEFS } from "../src/lib/templates.js";
 import { NODES, getPermGroups, upsertPermGroup, deletePermGroup } from "../src/lib/permissions.js";
+import { getGuideData } from "./guide.js";
 import { erlc, ErlcError } from "../src/lib/erlc.js";
 import { formatDuration, parseDuration } from "../src/lib/util.js";
 import * as d from "./discord.js";
@@ -127,7 +128,12 @@ app.get("/auth/logout", (req, res) => {
 // ---- landing ----
 app.get("/", async (req, res) => {
   const guilds = await listBotGuilds().catch(() => []);
-  res.render("index", { user: readSession(req), inviteUrl: d.inviteUrl(), stats: { guilds: guilds.length, commands: 46 } });
+  const guide = await getGuideData().catch(() => null);
+  res.render("index", {
+    user: readSession(req),
+    inviteUrl: d.inviteUrl(),
+    stats: { guilds: guilds.length, commands: guide?.total ?? 49 },
+  });
 });
 
 // ---- legal (public) ----
@@ -137,6 +143,22 @@ for (const page of ["privacy", "terms"]) {
     res.render(page, { user: readSession(req), updated: LEGAL_UPDATED, support: config.links.support || "" }),
   );
 }
+
+// ---- guide (public) ----
+app.get("/guide", async (req, res) => {
+  const guide = await getGuideData().catch((e) => {
+    console.error("guide data failed:", e.message);
+    return null;
+  });
+  if (!guide) return res.status(500).render("error", { user: readSession(req), message: "The guide is unavailable right now." });
+  res.render("guide", {
+    user: readSession(req),
+    guide,
+    inviteUrl: d.inviteUrl(),
+    support: config.links.support || "",
+    dashboard: (config.links.dashboard || "").replace(/\/$/, ""),
+  });
+});
 
 // ---- dashboard ----
 app.get("/dashboard", requireAuth, async (req, res) => {

@@ -74,9 +74,11 @@ async function welcomeGuild(guild) {
     .setTitle(`Thanks for adding ${guild.client.user.username}!`)
     .setDescription(
       "ER:LC + Discord moderation, staff shifts, case logging, and more.\n\n" +
-        "**Get started:** run `/setup` to see what needs configuring, then `/erlcserver add` to connect your ER:LC private server.",
+        "**Get started:** run `/setup` to see what needs configuring, then `/erlcserver add` to connect your ER:LC private server." +
+        (dash ? `\n\nNew to the bot? The [setup guide](${dash}/guide) walks through every step.` : ""),
     );
   const links = [
+    dash && `[Setup guide](${dash}/guide)`,
     dash && `[Dashboard](${dash})`,
     config.links.support && `[Support](${config.links.support})`,
     dash && `[Privacy](${dash}/privacy)`,

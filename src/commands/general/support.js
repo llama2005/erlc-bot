@@ -15,13 +15,16 @@ export default {
       ]).bitfield
     }&scope=bot%20applications.commands`;
 
+    const dash = (config.links.dashboard || "").replace(/\/$/, "");
+    const guideUrl = config.links.docs || (dash && `${dash}/guide`);
     const embed = new EmbedBuilder()
       .setColor(COLORS.primary)
       .setTitle("Need help?")
       .setDescription(
         [
           `• Run \`/help\` for the command list, \`/help <command>\` for details.`,
-          config.links.docs && `• [Documentation](${config.links.docs})`,
+          `• Run \`/setup\` to see what still needs configuring.`,
+          guideUrl && `• [Setup guide & command reference](${guideUrl})`,
           config.links.support && `• [Support server](${config.links.support})`,
         ]
           .filter(Boolean)

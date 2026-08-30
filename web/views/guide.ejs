@@ -1,0 +1,417 @@
+<%- include("partials/head", { title: "Setup Guide" }) %>
+<article class="guide">
+
+  <header class="guide-hero">
+    <h1>Setup guide</h1>
+    <p class="lead">
+      Everything the bot does, every command, and how to get it running on your server in
+      about five minutes. No ER:LC knowledge required to start.
+    </p>
+    <div class="cta">
+      <a href="<%= inviteUrl %>" class="btn big">Add the bot to your server</a>
+      <% if (dashboard) { %><a href="<%= dashboard %>/dashboard" class="btn big ghost">Open the dashboard</a><% } %>
+    </div>
+  </header>
+
+  <nav class="guide-toc">
+    <a href="#what">What it does</a>
+    <a href="#quickstart">Quick start</a>
+    <a href="#invite">1 · Add the bot</a>
+    <a href="#setup">2 · Run /setup</a>
+    <a href="#erlc">3 · Connect ER:LC</a>
+    <a href="#channels">4 · Channels &amp; roles</a>
+    <a href="#optional">5 · Optional extras</a>
+    <a href="#permissions">Permissions</a>
+    <a href="#commands">Command reference</a>
+    <a href="#config">Configuration reference</a>
+    <a href="#dashboard">Dashboard</a>
+    <a href="#faq">Troubleshooting</a>
+  </nav>
+
+  <!-- ─────────────────────────────  WHAT IT DOES  ───────────────────────────── -->
+  <section id="what">
+    <h2>What it does</h2>
+    <p>
+      It is a moderation and staff-management bot built around <strong>Emergency Response: Liberty County</strong>,
+      but every part works on its own — you can run it purely for Discord moderation, purely for shift
+      tracking, or the whole thing.
+    </p>
+    <div class="g-features">
+      <div>
+        <h3>Permanent case log</h3>
+        <p>Every warn, kick, jail and ban — issued from Discord <em>or</em> typed in-game — becomes a
+          numbered case tied to the Roblox account. Nothing is lost to a restart or a name change.
+          Each case log post has <strong>Edit reason</strong>, <strong>Change type</strong> and
+          <strong>Void</strong> buttons.</p>
+      </div>
+      <div>
+        <h3>In-game integration</h3>
+        <p>Check server status and the player list, read join / kill / command / mod-call logs, send
+          <code>:pm</code> / <code>:hint</code> / <code>:m</code>, run validated <code>:commands</code>,
+          post SSU/SSD session announcements and priority timers — all from Discord.</p>
+      </div>
+      <div>
+        <h3>Automatic logging</h3>
+        <p>Joins, leaves, kills, mod calls and staff commands are mirrored to Discord as they happen,
+          plus server up/down alerts. <code>:kick</code>, <code>:ban</code>, <code>:jail</code> and
+          warn-PMs run in-game are turned into cases automatically.</p>
+      </div>
+      <div>
+        <h3>Shifts &amp; quotas</h3>
+        <p>Staff clock in and out, an on-duty role is applied automatically, leaderboards and weekly
+          case / shift-time quotas keep everyone accountable, and staff can file leave-of-absence
+          requests.</p>
+      </div>
+      <div>
+        <h3>Appeals &amp; ban requests</h3>
+        <p>Players submit ban appeals and junior staff submit ban requests; senior staff approve or
+          deny with one click — approving runs the in-game <code>:ban</code> / <code>:unban</code> and
+          logs the case.</p>
+      </div>
+      <div>
+        <h3>Fine-grained permissions</h3>
+        <p>Two built-in tiers (staff / admin) get you started; permission groups let you build custom
+          ranks — a trial mod who can only warn, a senior who can approve bans.</p>
+      </div>
+      <div>
+        <h3>Roblox account linking</h3>
+        <p><code>/verify</code> links a Roblox account to a Discord account so cases, <code>/lookup</code>
+          and history cross-reference automatically.</p>
+      </div>
+      <div>
+        <h3>Utilities</h3>
+        <p>Announcements with a saved template, an embed builder with live preview, native polls,
+          a support-ticket system and reaction-role button panels.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────────────────────────  QUICK START  ───────────────────────────── -->
+  <section id="quickstart">
+    <h2>Quick start</h2>
+    <p>The bare minimum to get a working setup:</p>
+    <ol class="g-steps">
+      <li><strong><a href="#invite">Add the bot</a></strong> with the invite link and keep the default permissions.</li>
+      <li>Run <code>/setup</code> in your server — it shows a live checklist of what's done and what isn't.</li>
+      <li>Set a moderation-log channel: <code>/config modlog #mod-logs</code>.</li>
+      <li>Point the bot at your staff role: <code>/config erlc-role @Staff</code> and <code>/config erlc-admin-role @Admin</code>.</li>
+      <li><em>(ER:LC only)</em> Connect your private server: <code>/erlcserver add &lt;Server-Key&gt;</code>.</li>
+      <li>Run <code>/setup</code> again to confirm every essential is green.</li>
+    </ol>
+    <p class="g-note">
+      That's it. Everything below is detail on each step plus the optional features. You can also do
+      all of it on the <a href="<%= dashboard ? dashboard + '/dashboard' : '#' %>">dashboard</a> instead of with commands.
+    </p>
+  </section>
+
+  <!-- ─────────────────────────────  1 · ADD THE BOT  ───────────────────────────── -->
+  <section id="invite">
+    <h2>1 · Add the bot</h2>
+    <p>
+      Use the <a href="<%= inviteUrl %>">invite link</a>. You need <strong>Manage Server</strong> on the
+      Discord server to add it. Leave the pre-checked permissions as they are — the bot asks only for
+      what it actually uses:
+    </p>
+    <ul>
+      <li><strong>Manage Roles</strong> — apply the on-duty role, hand out reaction roles.</li>
+      <li><strong>Kick / Ban Members, Timeout Members</strong> — carry out Discord moderation you run through the bot.</li>
+      <li><strong>Manage Messages</strong> — <code>/purge</code>, and pinning ticket panels.</li>
+      <li><strong>View Audit Log</strong> — needed only if you turn on external-moderation logging (see below).</li>
+      <li><strong>Embed Links / Read Message History</strong> — post case embeds and read context.</li>
+    </ul>
+    <p>
+      After it joins you'll get a short welcome message. Slash commands can take up to an hour to
+      appear the very first time — prefix commands (default <code>!</code>) work immediately.
+    </p>
+    <p class="g-note">Keep the bot's role high in your role list — above your staff roles — or it can't
+      assign the on-duty role or moderate members with higher roles.</p>
+  </section>
+
+  <!-- ─────────────────────────────  2 · SETUP  ───────────────────────────── -->
+  <section id="setup">
+    <h2>2 · Run /setup</h2>
+    <p>
+      <code>/setup</code> is your control panel. It prints a checklist grouped into
+      <strong>Essentials</strong>, <strong>Optional</strong> and <strong>Other</strong>, and every
+      unfinished line tells you the exact command to fix it. Run it any time to see where you stand.
+    </p>
+    <p>The three essentials are:</p>
+    <ul>
+      <li><strong>A moderation-log channel</strong> — <code>/config modlog #channel</code>. Where cases are posted.</li>
+      <li><strong>Staff roles</strong> — <code>/config erlc-role @Staff</code> and <code>/config erlc-admin-role @Admin</code>.
+        Without these, only members with Discord's Manage Server permission can use staff commands.</li>
+      <li><strong>An ER:LC server</strong> — <code>/erlcserver add &lt;key&gt;</code>. Skip this if you're not using ER:LC.</li>
+    </ul>
+  </section>
+
+  <!-- ─────────────────────────────  3 · ERLC  ───────────────────────────── -->
+  <section id="erlc">
+    <h2>3 · Connect your ER:LC server</h2>
+    <p><em>Skip this section entirely if you only want Discord moderation and shifts.</em></p>
+    <ol class="g-steps">
+      <li>You need an ER:LC <strong>private server</strong> and its <strong>Server-Key</strong>. Open your
+        private server's settings in ER:LC and copy the API / Server-Key value. It looks like a long
+        random string.</li>
+      <li>In Discord run <code>/erlcserver add &lt;key&gt;</code>. The bot checks the key against ER:LC
+        before saving it, so you'll know straight away if it's wrong. On a prefix command the message
+        with your key is deleted automatically.</li>
+      <li>Some in-game commands (<code>:pm</code>, <code>:hint</code>, <code>:ban</code>, …) require your
+        ER:LC server to <strong>allowlist the bot's IP</strong>. Run <code>/erlc ip</code> to get the
+        address, then add it in your ER:LC server's API settings. Read-only commands work without this.</li>
+      <li>Check it: <code>/erlc status</code> should show your server's name, player count and join code.</li>
+    </ol>
+    <h3>Multiple ER:LC servers</h3>
+    <p>
+      Running a main, a training and an events server? Add each with <code>/erlcserver add &lt;key&gt; &lt;label&gt;</code>.
+      The first one is the default; every ER:LC and in-game command takes an optional
+      <code>server:</code> option to target a specific one. <code>/erlcserver default &lt;label&gt;</code>
+      changes which is used when you don't specify. The auto-logger posts for every connected server,
+      labelled.
+    </p>
+  </section>
+
+  <!-- ─────────────────────────────  4 · CHANNELS & ROLES  ───────────────────────────── -->
+  <section id="channels">
+    <h2>4 · Channels &amp; roles</h2>
+    <p>All of these are <code>/config &lt;setting&gt; #channel</code> or <code>/config &lt;setting&gt; @role</code>.
+      Only <strong>modlog</strong> and the two staff roles are required; the rest enable a feature when set.</p>
+    <h3>Roles</h3>
+    <table class="g-table">
+      <thead><tr><th>Setting</th><th>What the role grants</th></tr></thead>
+      <tbody>
+        <tr><td><code>erlc-role</code></td><td>Staff — moderation, ER:LC, shift and session commands.</td></tr>
+        <tr><td><code>erlc-admin-role</code></td><td>Admin — everything staff can do, plus approve ban requests, shift-admin and voiding other people's cases.</td></tr>
+        <tr><td><code>shift-role</code></td><td>Auto-applied while a staff member is clocked in, removed when they clock out.</td></tr>
+        <tr><td><code>session-role</code></td><td>Pinged on SSU / SSD announcements.</td></tr>
+        <tr><td><code>ticket-role</code></td><td>Added to every ticket channel that's opened.</td></tr>
+      </tbody>
+    </table>
+    <h3>Core channels</h3>
+    <table class="g-table">
+      <thead><tr><th>Setting</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td><code>modlog</code></td><td><strong>Required.</strong> Every moderation case is posted here.</td></tr>
+        <tr><td><code>banreq</code></td><td>Ban requests wait here for a senior staff decision.</td></tr>
+        <tr><td><code>appeal-channel</code></td><td>Ban appeals submitted with <code>/appeal</code> land here.</td></tr>
+        <tr><td><code>loa-channel</code></td><td>Leave-of-absence requests for approval.</td></tr>
+        <tr><td><code>cmdlog</code></td><td>Logs every bot command that's run.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ─────────────────────────────  5 · OPTIONAL  ───────────────────────────── -->
+  <section id="optional">
+    <h2>5 · Optional extras</h2>
+    <h3>ER:LC live logging</h3>
+    <p>Set any of these to have the bot auto-post that activity as it happens:</p>
+    <table class="g-table">
+      <thead><tr><th>Setting</th><th>Posts</th></tr></thead>
+      <tbody>
+        <tr><td><code>join-log</code></td><td>Players joining and leaving the ER:LC server.</td></tr>
+        <tr><td><code>kill-log</code></td><td>Kill logs.</td></tr>
+        <tr><td><code>ingame-log</code></td><td>Staff <code>:commands</code> run in-game.</td></tr>
+        <tr><td><code>modcall-log</code></td><td><code>!mod</code> calls — pings your staff role.</td></tr>
+        <tr><td><code>status-channel</code></td><td>Server up / down alerts.</td></tr>
+        <tr><td><code>session-channel</code></td><td>Where <code>/session</code> SSU/SSD announcements go.</td></tr>
+      </tbody>
+    </table>
+    <h3>In-game auto-log</h3>
+    <p>
+      <code>/config ingame-autolog on</code> turns <code>:kick</code> / <code>:ban</code> / <code>:jail</code>
+      run directly in-game — and warn-PMs (<code>:pm player warn reason</code>) — into logged cases, so
+      staff don't have to use the Discord commands. Change the warn keyword with <code>/config warn-trigger</code>.
+    </p>
+    <h3>External Discord moderation</h3>
+    <p>
+      <code>/config external-log on</code> makes a manual right-click ban / kick / timeout in Discord
+      (done outside the bot) create a case too. This one needs the bot to have <strong>View Audit Log</strong>.
+      Off by default.
+    </p>
+    <h3>Weekly staff quotas</h3>
+    <p>
+      Set <code>/config quota-channel #channel</code> plus <code>/config case-quota &lt;n&gt;</code> and/or
+      <code>/config shift-quota &lt;time&gt;</code> (e.g. <code>3h</code>). A report of who did and didn't
+      meet the target posts there each week.
+    </p>
+    <h3>Void behaviour</h3>
+    <p>
+      By default, voiding a case <strong>deletes</strong> it and its log message (like most bots).
+      <code>/config hard-void off</code> keeps a greyed-out record instead, for a full audit trail.
+    </p>
+    <h3>Other toggles</h3>
+    <p>
+      <code>/config reason-required on</code> forces a reason on every moderation action ·
+      <code>/config ai off</code> disables the <code>/ai</code> assistant and @mention replies ·
+      <code>/prefix &lt;char&gt;</code> changes the prefix for prefix commands ·
+      <code>/config disable &lt;module&gt;</code> turns off a whole command group.
+    </p>
+  </section>
+
+  <!-- ─────────────────────────────  PERMISSIONS  ───────────────────────────── -->
+  <section id="permissions">
+    <h2>Permissions &amp; roles</h2>
+    <p>Access is decided in this order:</p>
+    <ol>
+      <li><strong>Manage Server</strong> (Discord permission) — can always use everything, including <code>/config</code>.</li>
+      <li><strong>Admin role</strong> (<code>erlc-admin-role</code>) — every capability below except changing settings.</li>
+      <li><strong>Staff role</strong> (<code>erlc-role</code>) — the common staff bundle: view cases, warn, kick, jail, submit ban requests, read ER:LC, send in-game messages, sessions, clock in/out.</li>
+      <li><strong>Permission groups</strong> — custom, for anything in between.</li>
+    </ol>
+    <h3>Custom permission groups</h3>
+    <p>
+      <code>/permgroup set @role "Name" &lt;nodes&gt;</code> maps a role to an exact set of capabilities.
+      For example, a trial-mod role that can only warn:
+      <code>/permgroup set @Trial "Trial Mod" case.view mod.warn shift.self</code>.
+      Use <code>/permgroup grant</code> / <code>revoke</code> to adjust one node, and <code>/permgroup list</code>
+      to see everything. The nodes:
+    </p>
+    <table class="g-table">
+      <thead><tr><th>Node</th><th>Grants</th></tr></thead>
+      <tbody>
+        <% guide.nodes.forEach(function(n){ %>
+          <tr><td><code><%= n.node %></code></td><td><%= n.desc %></td></tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ─────────────────────────────  COMMAND REFERENCE  ───────────────────────────── -->
+  <section id="commands">
+    <h2>Command reference</h2>
+    <p>
+      <%= guide.total %> commands, grouped by area. Every command works as a slash command and as a
+      prefix command. <code>&lt;required&gt;</code>, <code>[optional]</code>. Run <code>/help &lt;command&gt;</code>
+      in Discord for the full details of any one.
+    </p>
+
+    <% guide.sections.forEach(function(sec){ %>
+      <div class="g-cmdgroup">
+        <h3><%= sec.title %></h3>
+        <p class="g-blurb"><%= sec.blurb %></p>
+        <% sec.commands.forEach(function(c){ %>
+          <div class="g-cmd">
+            <div class="g-cmd-head">
+              <code class="g-cmd-name">/<%= c.name %><%= c.sig ? " " + c.sig : "" %></code>
+              <% if (c.perm) { %><span class="g-tag"><%= c.perm %></span><% } %>
+              <% if (c.aliases.length) { %><span class="g-alias">also <%= c.aliases.map(a => "/" + a).join(", ") %></span><% } %>
+            </div>
+            <div class="g-cmd-desc"><%= c.description %></div>
+            <% if (c.subs.length) { %>
+              <ul class="g-subs">
+                <% c.subs.forEach(function(s){ %>
+                  <li>
+                    <code>/<%= c.name %> <%= s.name %><%= s.sig ? " " + s.sig : "" %></code>
+                    <% if (s.isDefault) { %><span class="g-alias">(default)</span><% } %>
+                    <% if (s.perm) { %><span class="g-tag"><%= s.perm %></span><% } %>
+                    — <%= s.description %>
+                  </li>
+                <% }) %>
+              </ul>
+            <% } %>
+          </div>
+        <% }) %>
+      </div>
+    <% }) %>
+  </section>
+
+  <!-- ─────────────────────────────  CONFIG REFERENCE  ───────────────────────────── -->
+  <section id="config">
+    <h2>Configuration reference</h2>
+    <p>
+      Every setting: <code>/config &lt;setting&gt; &lt;value&gt;</code> to change it, <code>/config view</code>
+      to see them all, or use the dashboard. Setting a channel/role to nothing clears it.
+    </p>
+    <table class="g-table">
+      <thead><tr><th>Setting</th><th>Type</th><th>What it does</th></tr></thead>
+      <tbody>
+        <tr><td><code>prefix</code></td><td>text</td><td>Prefix for non-slash commands (default <code>!</code>).</td></tr>
+        <tr><td><code>modlog</code></td><td>channel</td><td>Where moderation cases are posted. <strong>Required.</strong></td></tr>
+        <tr><td><code>cmdlog</code></td><td>channel</td><td>Logs every bot command that runs.</td></tr>
+        <tr><td><code>banreq</code></td><td>channel</td><td>Ban requests await approval here.</td></tr>
+        <tr><td><code>appeal-channel</code></td><td>channel</td><td>Ban appeals for review.</td></tr>
+        <tr><td><code>loa-channel</code></td><td>channel</td><td>Leave-of-absence requests.</td></tr>
+        <tr><td><code>join-log</code></td><td>channel</td><td>ER:LC joins &amp; leaves.</td></tr>
+        <tr><td><code>kill-log</code></td><td>channel</td><td>ER:LC kill logs.</td></tr>
+        <tr><td><code>ingame-log</code></td><td>channel</td><td>Staff <code>:commands</code> run in-game.</td></tr>
+        <tr><td><code>modcall-log</code></td><td>channel</td><td><code>!mod</code> calls; pings staff.</td></tr>
+        <tr><td><code>status-channel</code></td><td>channel</td><td>ER:LC server up/down alerts.</td></tr>
+        <tr><td><code>session-channel</code></td><td>channel</td><td>SSU / SSD announcements.</td></tr>
+        <tr><td><code>staff-alert</code></td><td>channel</td><td>Off-duty staff command use is reported here.</td></tr>
+        <tr><td><code>announce-channel</code></td><td>channel</td><td>Default target for <code>/announce</code>.</td></tr>
+        <tr><td><code>quota-channel</code></td><td>channel</td><td>Weekly staff-quota report.</td></tr>
+        <tr><td><code>ticket-category</code></td><td>category</td><td>New ticket channels are created here.</td></tr>
+        <tr><td><code>erlc-role</code></td><td>role</td><td>Staff — moderation / ER:LC / shift / session commands.</td></tr>
+        <tr><td><code>erlc-admin-role</code></td><td>role</td><td>Admin — approvals, shift-admin, void any case.</td></tr>
+        <tr><td><code>shift-role</code></td><td>role</td><td>Auto-applied while clocked in.</td></tr>
+        <tr><td><code>session-role</code></td><td>role</td><td>Pinged on SSU / SSD.</td></tr>
+        <tr><td><code>ticket-role</code></td><td>role</td><td>Added to every opened ticket.</td></tr>
+        <tr><td><code>ingame-autolog</code></td><td>on/off</td><td>Turn in-game <code>:kick</code>/<code>:ban</code>/<code>:jail</code> &amp; warn-PMs into cases.</td></tr>
+        <tr><td><code>warn-trigger</code></td><td>word</td><td>Keyword in <code>:pm player &lt;word&gt; reason</code> that means "warn" (default <code>warn</code>).</td></tr>
+        <tr><td><code>external-log</code></td><td>on/off</td><td>Log Discord bans/kicks/timeouts done outside the bot. Needs View Audit Log.</td></tr>
+        <tr><td><code>hard-void</code></td><td>on/off</td><td>On (default): voiding deletes the case. Off: keep a greyed record.</td></tr>
+        <tr><td><code>reason-required</code></td><td>on/off</td><td>Force a reason on every moderation action.</td></tr>
+        <tr><td><code>ai</code></td><td>on/off</td><td>The <code>/ai</code> command and @mention replies.</td></tr>
+        <tr><td><code>case-quota</code></td><td>number</td><td>Weekly cases-per-staff target (0 = off).</td></tr>
+        <tr><td><code>shift-quota</code></td><td>duration</td><td>Weekly shift-time-per-staff target, e.g. <code>3h</code> (0 = off).</td></tr>
+      </tbody>
+    </table>
+    <p class="g-note">
+      Also: <code>/config disable &lt;module&gt;</code> / <code>enable &lt;module&gt;</code> toggles a whole
+      command group; <code>/modtype</code> and <code>/shifttype</code> manage your custom case and shift types.
+    </p>
+  </section>
+
+  <!-- ─────────────────────────────  DASHBOARD  ───────────────────────────── -->
+  <section id="dashboard">
+    <h2>Dashboard</h2>
+    <p>
+      <% if (dashboard) { %><a href="<%= dashboard %>/dashboard"><%= dashboard.replace(/^https?:\/\//, "") %>/dashboard</a><% } else { %>The web dashboard<% } %>
+      does everything the commands do, with a UI. Log in with Discord — you'll see every server where
+      you have Manage Server and the bot is present. From there you can edit all settings, browse and
+      edit cases, adjust shift time, review appeals / ban requests / LOAs, manage ER:LC servers,
+      permission groups, auto-hints and message templates. Changes sync to the bot instantly.
+    </p>
+  </section>
+
+  <!-- ─────────────────────────────  FAQ  ───────────────────────────── -->
+  <section id="faq">
+    <h2>Troubleshooting</h2>
+    <dl class="g-faq">
+      <dt>Slash commands don't show up.</dt>
+      <dd>They can take up to an hour to register the first time the bot joins. Use prefix commands
+        (<code>!help</code>) meanwhile, or fully reload Discord.</dd>
+
+      <dt>"You don't have permission" but I'm staff.</dt>
+      <dd>Set <code>/config erlc-role @YourStaffRole</code>. Until a staff/admin role is set, only members
+        with Discord's <strong>Manage Server</strong> permission can use staff commands.</dd>
+
+      <dt>ER:LC commands say the server isn't connected.</dt>
+      <dd>Run <code>/erlcserver add &lt;key&gt;</code>. Check <code>/erlc status</code>. If in-game
+        <code>:</code>commands fail but reads work, allowlist the bot's IP (<code>/erlc ip</code>) in your
+        ER:LC server settings.</dd>
+
+      <dt>The bot can't assign the on-duty role / can't ban a member.</dt>
+      <dd>Move the bot's role above the roles it needs to manage, in Server Settings → Roles.</dd>
+
+      <dt>Cases aren't being posted.</dt>
+      <dd>Set <code>/config modlog #channel</code> and make sure the bot can see and post (with embeds) in it.</dd>
+
+      <dt>How do I remove all my data?</dt>
+      <dd>Remove the bot — its data is deleted 30 days later. To wipe it immediately, ask in the
+        <% if (support) { %><a href="<%= support %>">support server</a><% } else { %>support server<% } %>.
+        See the <a href="/privacy">Privacy Policy</a>.</dd>
+    </dl>
+  </section>
+
+  <section id="help" class="guide-foot">
+    <h2>Still stuck?</h2>
+    <p>
+      <% if (support) { %><a href="<%= support %>" class="btn">Join the support server</a><% } %>
+      <a href="/privacy" class="btn ghost sm">Privacy</a>
+      <a href="/terms" class="btn ghost sm">Terms</a>
+      <a href="/" class="btn ghost sm">Home</a>
+    </p>
+  </section>
+
+</article>
+<%- include("partials/foot") %>

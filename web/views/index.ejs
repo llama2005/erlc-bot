@@ -15,6 +15,9 @@
     <% } %>
     <a href="<%= inviteUrl %>" class="btn big ghost">Add to your server</a>
   </div>
+  <p class="lead" style="margin-top:14px;font-size:.95rem;">
+    New here? Read the <a href="/guide">setup guide</a> — every command and a five-minute walkthrough.
+  </p>
 </section>
 
 <div class="feature-grid">
@@ -52,7 +55,7 @@
 
 <div class="stat-strip">
   <div><div class="n"><%= typeof stats !== "undefined" ? stats.guilds : "—" %></div><div class="l">servers</div></div>
-  <div><div class="n"><%= typeof stats !== "undefined" ? stats.commands : "46" %></div><div class="l">commands</div></div>
+  <div><div class="n"><%= typeof stats !== "undefined" ? stats.commands : "49" %></div><div class="l">commands</div></div>
   <div><div class="n">∞</div><div class="l">cases retained</div></div>
 </div>
 

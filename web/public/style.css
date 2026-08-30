@@ -257,3 +257,70 @@ table.grid tr.voided .type-badge { text-decoration: line-through; }
 .legal li { margin: 6px 0; }
 .legal code { background: var(--bg-soft); padding: 1px 5px; border-radius: 4px; font-size: .88em; }
 .legal .muted { font-size: .85rem; }
+
+/* ---------- guide / docs page ---------- */
+.guide { max-width: 860px; margin: 28px auto 64px; padding: 0 20px; line-height: 1.7; }
+.guide-hero { padding: 20px 0 8px; border-bottom: 1px solid var(--border-soft); margin-bottom: 24px; }
+.guide-hero h1 { font-size: 2rem; }
+.guide-hero .lead { color: var(--text-dim); font-size: 1.05rem; max-width: 60ch; margin: 10px 0 18px; }
+.guide-hero .cta { display: flex; gap: 10px; flex-wrap: wrap; }
+
+.guide-toc { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; gap: 6px 14px;
+  padding: 12px 14px; margin: 0 0 32px; background: var(--bg-soft); border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm); font-size: .86rem; }
+.guide-toc a { color: var(--muted); }
+.guide-toc a:hover { color: var(--text); text-decoration: none; }
+
+.guide section { margin: 0 0 40px; scroll-margin-top: 64px; }
+.guide h2 { font-size: 1.3rem; font-weight: 640; margin-bottom: 12px; padding-bottom: 6px;
+  border-bottom: 1px solid var(--border-soft); letter-spacing: -0.3px; }
+.guide h3 { font-size: 1rem; color: var(--text); margin: 22px 0 8px; }
+.guide ul, .guide ol { padding-left: 22px; margin: 0 0 12px; }
+.guide li { margin: 7px 0; }
+.guide code { background: var(--bg-soft); border: 1px solid var(--border-soft); padding: 1px 6px;
+  border-radius: 5px; font-size: .86em; color: var(--text); white-space: nowrap; }
+.guide-hero .cta .btn { white-space: normal; }
+
+.g-note { background: var(--accent-ghost); border-left: 3px solid var(--accent); padding: 10px 14px;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0; color: var(--text-dim); font-size: .92rem; }
+
+.g-features { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; margin-top: 14px; }
+.g-features > div { background: var(--panel); border: 1px solid var(--border-soft); border-radius: var(--radius); padding: 14px 16px; }
+.g-features h3 { margin: 0 0 6px; font-size: .95rem; }
+.g-features p { margin: 0; color: var(--muted); font-size: .88rem; line-height: 1.55; }
+
+.g-steps { counter-reset: gs; list-style: none; padding-left: 0; }
+.g-steps > li { counter-increment: gs; position: relative; padding-left: 38px; margin: 12px 0; }
+.g-steps > li::before { content: counter(gs); position: absolute; left: 0; top: 0;
+  width: 26px; height: 26px; border-radius: 50%; background: var(--accent-ghost); color: var(--accent-soft);
+  display: grid; place-items: center; font-size: .82rem; font-weight: 700; }
+
+.g-table { width: 100%; border-collapse: collapse; margin: 12px 0 16px; font-size: .9rem; display: block; overflow-x: auto; }
+.g-table th, .g-table td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border-soft); vertical-align: top; }
+.g-table th { color: var(--muted); font-weight: 600; font-size: .8rem; text-transform: uppercase; letter-spacing: .4px; }
+.g-table td:first-child { white-space: nowrap; }
+
+.g-cmdgroup { margin: 22px 0; }
+.g-cmdgroup > h3 { font-size: 1.05rem; color: var(--text); margin-bottom: 2px; }
+.g-blurb { color: var(--muted); font-size: .9rem; margin: 0 0 12px; }
+.g-cmd { border: 1px solid var(--border-soft); border-radius: var(--radius-sm); padding: 12px 14px; margin: 8px 0; background: var(--panel); }
+.g-cmd-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.g-cmd-name { background: var(--bg-soft); font-size: .88rem; white-space: normal; }
+.g-cmd-desc { color: var(--text-dim); font-size: .9rem; margin-top: 6px; }
+.g-tag { font-size: .72rem; text-transform: uppercase; letter-spacing: .4px; font-weight: 700;
+  background: var(--warn-soft); color: var(--warn); padding: 1px 7px; border-radius: 999px; }
+.g-alias { font-size: .8rem; color: var(--muted); }
+.g-subs { list-style: none; padding-left: 0; margin: 10px 0 2px; border-top: 1px dashed var(--border-soft); padding-top: 8px; }
+.g-subs li { margin: 6px 0; font-size: .88rem; color: var(--text-dim); }
+.g-subs code { font-size: .84em; }
+
+.g-faq dt { font-weight: 600; color: var(--text); margin-top: 14px; }
+.g-faq dd { margin: 4px 0 0; color: var(--text-dim); font-size: .92rem; }
+
+.guide-foot { border-top: 1px solid var(--border-soft); padding-top: 20px; }
+.guide-foot .btn { margin-right: 8px; }
+
+@media (max-width: 720px) {
+  .guide-toc { position: static; }
+  .guide-hero h1 { font-size: 1.6rem; }
+}

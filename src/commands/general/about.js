@@ -32,6 +32,7 @@ export default {
     const links = [
       `[Invite](${inviteUrl(c.user.id)})`,
       dash && `[Dashboard](${dash})`,
+      dash && `[Setup guide](${dash}/guide)`,
       config.links.support && `[Support](${config.links.support})`,
       dash && `[Privacy](${dash}/privacy)`,
       dash && `[Terms](${dash}/terms)`,
