@@ -25,6 +25,7 @@ import { listLoa, getLoa, setLoaStatus } from "../src/lib/loa.js";
 import { listAppeals, getAppeal, resolveAppeal } from "../src/lib/appeals.js";
 import { listAutohints, addAutohint, removeAutohint, toggleAutohint } from "../src/lib/autohint.js";
 import { moderatorCaseStats } from "../src/lib/modstats.js";
+import { listTemplates, getTemplate, saveTemplate, resetTemplate, renderPayload, cleanEmbed, TEMPLATE_DEFS } from "../src/lib/templates.js";
 import { NODES, getPermGroups, upsertPermGroup, deletePermGroup } from "../src/lib/permissions.js";
 import { erlc, ErlcError } from "../src/lib/erlc.js";
 import { formatDuration, parseDuration } from "../src/lib/util.js";
@@ -381,6 +382,69 @@ app.post("/dashboard/:guildId/autohints/:id/:op", requireAuth, requireGuildAdmin
   else if (req.params.op === "on") await toggleAutohint(req.guild.id, id, true);
   else if (req.params.op === "off") await toggleAutohint(req.guild.id, id, false);
   res.redirect(`/dashboard/${req.guild.id}/autohints`);
+});
+
+// ---- message templates + send ----
+app.get("/dashboard/:guildId/templates", requireAuth, requireGuildAdmin, async (req, res) => {
+  const [templates, channels] = await Promise.all([
+    listTemplates(req.guild.id),
+    d.getGuildChannels(req.guild.id).catch(() => []),
+  ]);
+  await g(req, res, "templates", {
+    tab: "templates",
+    templates,
+    channels: channels.filter((c) => c.type === 0 || c.type === 5).sort((a, b) => a.position - b.position),
+    sent: req.query.sent,
+    saved: req.query.saved,
+  });
+});
+
+app.post("/dashboard/:guildId/templates/:key", requireAuth, requireGuildAdmin, async (req, res) => {
+  const key = req.params.key;
+  if (!(key in TEMPLATE_DEFS)) return res.redirect(`/dashboard/${req.guild.id}/templates`);
+  const b = req.body;
+  if (b._action === "reset") {
+    await resetTemplate(req.guild.id, key);
+    return res.redirect(`/dashboard/${req.guild.id}/templates?saved=${key}`);
+  }
+  await saveTemplate(req.guild.id, key, {
+    name: TEMPLATE_DEFS[key].name,
+    content: (b.content || "").slice(0, 1800),
+    embed: cleanEmbed(b),
+    enabled: b.enabled === "on" || b.enabled === undefined,
+  });
+  res.redirect(`/dashboard/${req.guild.id}/templates?saved=${key}`);
+});
+
+app.post("/dashboard/:guildId/templates/:key/send", requireAuth, requireGuildAdmin, async (req, res) => {
+  const key = req.params.key;
+  const channelId = (req.body.channelId || "").trim();
+  if (!channelId) return res.redirect(`/dashboard/${req.guild.id}/templates`);
+  const tpl = await getTemplate(req.guild.id, key);
+  const vars = {};
+  for (const v of TEMPLATE_DEFS[key]?.vars || []) vars[v] = (req.body["v_" + v] || "").trim();
+  if (!vars.staffname) vars.staffname = req.user.username;
+  if (!vars.staff) vars.staff = `<@${req.user.id}>`;
+  const payload = renderPayload(tpl, vars);
+  const ping = (req.body.ping || "").trim();
+  if (ping) payload.content = `<@&${ping}> ${payload.content || ""}`.trim();
+  payload.allowed_mentions = { roles: ping ? [ping] : [], parse: ["users"] };
+  const r = await d.postChannelMessage(channelId, payload);
+  res.redirect(`/dashboard/${req.guild.id}/templates?sent=${r.ok ? "1" : "0"}`);
+});
+
+app.post("/dashboard/:guildId/send", requireAuth, requireGuildAdmin, async (req, res) => {
+  const b = req.body;
+  const channelId = (b.channelId || "").trim();
+  if (!channelId) return res.redirect(`/dashboard/${req.guild.id}/templates`);
+  const embed = cleanEmbed(b);
+  const payload = renderPayload({ content: b.content || "", embed }, {});
+  const ping = (b.ping || "").trim();
+  if (ping) payload.content = `<@&${ping}> ${payload.content || ""}`.trim();
+  payload.allowed_mentions = { roles: ping ? [ping] : [], parse: ["users"] };
+  if (!payload.content && !payload.embeds.length) return res.redirect(`/dashboard/${req.guild.id}/templates?sent=0`);
+  const r = await d.postChannelMessage(channelId, payload);
+  res.redirect(`/dashboard/${req.guild.id}/templates?sent=${r.ok ? "1" : "0"}`);
 });
 
 // ---- permissions ----

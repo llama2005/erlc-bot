@@ -1,7 +1,8 @@
 import { EmbedBuilder } from "discord.js";
 import { erlc, ErlcError } from "../../lib/erlc.js";
 import { resolveSendable } from "../../lib/modlog.js";
-import { COLORS, ok, err } from "../../lib/style.js";
+import { COLORS, ok } from "../../lib/style.js";
+import { getTemplate, renderPayload } from "../../lib/templates.js";
 import { erlcKeyOrNull } from "../moderation/_shared.js";
 
 const activeTimers = new Map(); // guildId -> timeout
@@ -22,16 +23,14 @@ export default {
     const mins = Math.min(60, Math.max(1, ctx.args.minutes));
     const key = erlcKeyOrNull(ctx);
     const reason = ctx.args.reason?.trim();
+    const vars = { minutes: mins, reason: reason || "general priority", staff: `<@${ctx.author.id}>`, staffname: ctx.author.tag ?? ctx.author.username };
 
-    const embed = new EmbedBuilder()
-      .setColor(COLORS.warn)
-      .setTitle("🚨 Priority active")
-      .setDescription(`A priority is in effect for **${mins} minute${mins === 1 ? "" : "s"}**.${reason ? `\n**Reason:** ${reason}` : ""}\nRespect the scene — no interfering.`)
-      .setFooter({ text: `Called by ${ctx.author.tag ?? ctx.author.username}` })
-      .setTimestamp();
+    const tpl = await getTemplate(ctx.guild.id, "priority");
+    const payload = renderPayload(tpl, vars);
 
     const { channel } = await resolveSendable(ctx.client, ctx.config.sessionChannel);
-    await (channel ?? ctx.channel).send({ embeds: [embed] });
+    const target = channel ?? ctx.channel;
+    await target.send(payload);
 
     let hinted = false;
     if (key) {
@@ -44,9 +43,10 @@ export default {
       clearTimeout(activeTimers.get(ctx.guild.id));
       activeTimers.set(
         ctx.guild.id,
-        setTimeout(() => {
+        setTimeout(async () => {
           erlc.command(key, ":h Priority has ended.").catch(() => {});
-          (channel ?? ctx.channel).send({ embeds: [new EmbedBuilder().setColor(COLORS.success).setTitle("✅ Priority ended")] }).catch(() => {});
+          const endTpl = await getTemplate(ctx.guild.id, "priority_end").catch(() => null);
+          if (endTpl) target.send(renderPayload(endTpl, vars)).catch(() => {});
           activeTimers.delete(ctx.guild.id);
         }, mins * 60_000).unref?.() ?? undefined,
       );

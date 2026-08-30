@@ -249,6 +249,17 @@ const SCHEMA = `
     players   INTEGER,
     checked_at BIGINT NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS message_templates (
+    guild_id   TEXT NOT NULL,
+    key        TEXT NOT NULL,
+    name       TEXT NOT NULL,
+    content    TEXT,
+    embed      JSONB NOT NULL DEFAULT '{}',
+    enabled    BOOLEAN NOT NULL DEFAULT true,
+    updated_at BIGINT NOT NULL,
+    PRIMARY KEY (guild_id, key)
+  );
 `;
 
 // Forward migrations for columns added after a guild's DB was first created.

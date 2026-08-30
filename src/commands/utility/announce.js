@@ -1,9 +1,10 @@
-import { EmbedBuilder } from "discord.js";
-import { COLORS, ok, err } from "../../lib/style.js";
+import { ok, err } from "../../lib/style.js";
+import { getTemplate, renderPayload } from "../../lib/templates.js";
+import { resolveChannel } from "../../lib/modlog.js";
 
 export default {
   name: "announce",
-  description: "Post an embed announcement to a channel.",
+  description: "Post an announcement using the server's Announcement template.",
   module: "utility",
   guildOnly: true,
   defer: true,
@@ -11,27 +12,25 @@ export default {
   userPermissions: ["ManageMessages"],
   botPermissions: ["EmbedLinks"],
   args: [
-    { name: "channel", type: "channel", required: true, description: "Where to post" },
-    { name: "message", type: "text", required: true, description: "Body (supports markdown, use \\n for new lines)" },
-    { name: "title", type: "string", required: false, description: "Optional title" },
+    { name: "message", type: "text", required: true, description: "Body (fills {message} in the template)" },
+    { name: "channel", type: "channel", required: false, description: "Where to post (default: the announcement channel)" },
     { name: "ping", type: "role", required: false, description: "Role to ping" },
   ],
   async execute(ctx) {
-    const ch = ctx.args.channel;
-    if (!ch?.isTextBased?.()) return ctx.reply({ content: err("Pick a text channel."), ephemeral: true });
+    const ch = ctx.args.channel ?? (await resolveChannel(ctx.client, ctx.config.announceChannel)) ?? ctx.channel;
+    if (!ch?.isTextBased?.()) return ctx.reply({ content: err("Pick a text channel, or set an announcement channel with `/config announce-channel`."), ephemeral: true });
 
-    const embed = new EmbedBuilder()
-      .setColor(COLORS.primary)
-      .setDescription(ctx.args.message.replace(/\\n/g, "\n").slice(0, 4000))
-      .setFooter({ text: `Announced by ${ctx.author.tag ?? ctx.author.username}` })
-      .setTimestamp();
-    if (ctx.args.title) embed.setTitle(ctx.args.title.slice(0, 256));
-
-    await ch.send({
-      content: ctx.args.ping ? `<@&${ctx.args.ping.id}>` : undefined,
-      embeds: [embed],
-      allowedMentions: { roles: ctx.args.ping ? [ctx.args.ping.id] : [] },
+    const tpl = await getTemplate(ctx.guild.id, "announcement");
+    const payload = renderPayload(tpl, {
+      message: ctx.args.message.replace(/\\n/g, "\n"),
+      staff: `<@${ctx.author.id}>`,
+      staffname: ctx.author.tag ?? ctx.author.username,
+      date: `<t:${Math.floor(Date.now() / 1000)}:D>`,
     });
-    await ctx.reply(ok(`Posted to <#${ch.id}>.`));
+    if (!payload.embeds.length && !payload.content) payload.content = ctx.args.message;
+
+    const content = [ctx.args.ping ? `<@&${ctx.args.ping.id}>` : "", payload.content].filter(Boolean).join(" ") || undefined;
+    await ch.send({ ...payload, content, allowedMentions: { roles: ctx.args.ping ? [ctx.args.ping.id] : [] } });
+    await ctx.reply(ok(`Posted to <#${ch.id}>${tpl.custom ? " using your custom template" : ""}.`));
   },
 };

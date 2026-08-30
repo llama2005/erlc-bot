@@ -224,3 +224,27 @@ table.grid tr.voided .type-badge { text-decoration: line-through; }
   .hero h1 { font-size: 2rem; }
   .topbar nav a span { display: none; }
 }
+
+/* ---------- embed composer + preview ---------- */
+.composer { display: grid; grid-template-columns: 1fr 340px; gap: 22px; margin: 14px 0 18px; align-items: start; }
+.composer-fields label { margin: 9px 0; }
+.composer-fields textarea { max-width: 100%; }
+.composer-preview { position: sticky; top: 78px; }
+.composer-preview .preview-label { font-size: .74rem; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); margin-bottom: 6px; font-weight: 600; }
+.msg-preview { background: #313338; border-radius: 8px; padding: 12px 14px; font-size: .9rem; }
+.mp-content { color: #dbdee1; margin-bottom: 6px; white-space: pre-wrap; }
+.mp-content:empty { display: none; }
+.embed-preview { position: relative; border-left: 4px solid var(--accent); background: #2b2d31; border-radius: 4px; padding: 10px 14px; color: #dbdee1; }
+.embed-preview .e-author { font-size: .82rem; font-weight: 600; margin-bottom: 4px; color: #f2f3f5; }
+.embed-preview .e-title { font-weight: 600; color: #f2f3f5; margin-bottom: 4px; }
+.embed-preview .e-desc { font-size: .875rem; line-height: 1.4; color: #dbdee1; }
+.embed-preview .e-desc code, .embed-preview .e-field code { background: #1e1f22; padding: 1px 4px; border-radius: 4px; font-size: .82em; }
+.embed-preview .e-fields { display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 8px; }
+.embed-preview .e-field b { display: block; font-size: .8rem; color: #f2f3f5; margin-bottom: 2px; }
+.embed-preview .e-field > div { font-size: .84rem; }
+.embed-preview .e-image { display: block; max-width: 100%; border-radius: 4px; margin-top: 10px; }
+.embed-preview .e-thumb { position: absolute; top: 10px; right: 12px; width: 56px; height: 56px; border-radius: 4px; object-fit: cover; }
+.embed-preview .e-footer { font-size: .74rem; color: #949ba4; margin-top: 8px; }
+.send-strip { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 12px 14px; background: var(--bg-soft); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); margin-top: 8px; }
+.send-strip select, .send-strip input { margin: 0; width: auto; }
+@media (max-width: 900px) { .composer { grid-template-columns: 1fr; } .composer-preview { position: static; } }

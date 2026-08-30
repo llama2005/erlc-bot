@@ -1,0 +1,102 @@
+<%- include("partials/head", { title: "Templates · " + guild.name }) %>
+
+<div class="page-head">
+  <div><h1>Templates &amp; send</h1><div class="sub">Design how SSU / SSD / announcements / priority messages look — saved and reused by the bot.</div></div>
+</div>
+
+<% if (sent === "1") { %><div class="flash">✓ Message sent.</div><% } %>
+<% if (sent === "0") { %><div class="flash" style="background:var(--danger-soft);color:var(--danger)">Couldn't send — check the bot can post in that channel.</div><% } %>
+<% if (saved) { %><div class="flash">✓ Template saved.</div><% } %>
+
+<% const chanOpts = (sel) => `<option value="">— pick a channel —</option>` + channels.map(c => `<option value="${c.id}"${c.id===sel?' selected':''}>#${c.name}</option>`).join(""); %>
+
+<!-- one-off sender -->
+<section class="card">
+  <h2>Send a one-off message</h2>
+  <p class="card-desc">Not saved anywhere — just compose and post.</p>
+  <form method="post" action="/dashboard/<%= guild.id %>/send">
+    <div class="field-grid">
+      <label>Channel <select name="channelId" required><%- chanOpts() %></select></label>
+      <label>Ping role ID <input type="text" name="ping" placeholder="optional role ID"></label>
+    </div>
+    <%- include("partials/embedcomposer", { embed: {}, tplContent: "" }) %>
+    <button class="btn big">Send</button>
+  </form>
+</section>
+
+<h2 style="margin:34px 0 6px">Saved templates</h2>
+
+<% templates.forEach(function(t){ %>
+<section class="card">
+  <div class="row-between">
+    <h2 style="margin:0"><%= t.name %> <span class="badge <%= t.custom ? 'ok' : '' %>"><%= t.custom ? 'customised' : 'default' %></span></h2>
+    <code class="mono"><%= t.key %></code>
+  </div>
+  <% if (t.vars.length) { %>
+  <p class="card-desc">Placeholders: <% t.vars.forEach(function(v){ %><code>{<%= v %>}</code> <% }) %></p>
+  <% } %>
+
+  <form method="post" action="/dashboard/<%= guild.id %>/templates/<%= t.key %>">
+    <label class="check"><input type="checkbox" name="enabled" <%= t.enabled ? 'checked' : '' %>> Use this custom template (unchecked = fall back to the built-in look)</label>
+    <%- include("partials/embedcomposer", { embed: t.embed, tplContent: t.content }) %>
+    <div class="btn-row">
+      <button class="btn">Save template</button>
+      <button class="btn ghost" name="_action" value="reset" formnovalidate onclick="return confirm('Reset to the built-in default?')">Reset to default</button>
+    </div>
+  </form>
+
+  <form method="post" action="/dashboard/<%= guild.id %>/templates/<%= t.key %>/send" class="send-strip">
+    <strong>Send now:</strong>
+    <select name="channelId" required><%- chanOpts() %></select>
+    <input type="text" name="ping" placeholder="ping role ID" size="14">
+    <% t.vars.filter(v => !['staff','staffname','date'].includes(v)).forEach(function(v){ %>
+      <input type="text" name="v_<%= v %>" placeholder="{<%= v %>}" size="12">
+    <% }) %>
+    <button class="btn subtle sm">Send</button>
+  </form>
+</section>
+<% }) %>
+
+<%- include("partials/foot") %>
+
+<script>
+(function () {
+  const esc = s => (s || "").replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+  const md = s => esc(s)
+    .replace(/\*\*(.+?)\*\*/g, "<b>$1</b>")
+    .replace(/\*(.+?)\*/g, "<i>$1</i>")
+    .replace(/`([^`]+?)`/g, "<code>$1</code>")
+    .replace(/\n/g, "<br>");
+
+  function render(form) {
+    const v = n => (form.querySelector('[name="' + n + '"]')?.value || "").trim();
+    const checked = n => !!form.querySelector('[name="' + n + '"]')?.checked;
+    const prev = form.querySelector("[data-preview]");
+    const cont = form.querySelector("[data-content]");
+    if (cont) cont.innerHTML = v("content") ? md(v("content")) : "";
+
+    const color = v("color").replace(/^#/, "");
+    prev.style.borderLeftColor = /^[0-9a-f]{6}$/i.test(color) ? "#" + color : "var(--accent)";
+
+    let h = "";
+    if (v("authorName")) h += '<div class="e-author">' + esc(v("authorName")) + "</div>";
+    if (v("title")) h += '<div class="e-title">' + esc(v("title")) + "</div>";
+    if (v("description")) h += '<div class="e-desc">' + md(v("description")) + "</div>";
+    const fields = [];
+    for (let i = 0; i < 3; i++)
+      if (v("f" + i + "name") && v("f" + i + "value"))
+        fields.push('<div class="e-field' + (checked("f" + i + "inline") ? " inline" : "") + '"><b>' + esc(v("f" + i + "name")) + "</b><div>" + md(v("f" + i + "value")) + "</div></div>");
+    if (fields.length) h += '<div class="e-fields">' + fields.join("") + "</div>";
+    if (v("image")) h += '<img class="e-image" src="' + v("image").replace(/"/g, "") + '" onerror="this.remove()">';
+    if (v("footer") || checked("timestamp")) h += '<div class="e-footer">' + esc(v("footer")) + (v("footer") && checked("timestamp") ? " • " : "") + (checked("timestamp") ? "today at 00:00" : "") + "</div>";
+    if (v("thumbnail")) h += '<img class="e-thumb" src="' + v("thumbnail").replace(/"/g, "") + '" onerror="this.remove()">';
+    prev.innerHTML = h || '<span class="muted">empty embed</span>';
+  }
+
+  document.querySelectorAll(".composer").forEach(c => {
+    const form = c.closest("form");
+    render(form);
+    c.addEventListener("input", () => render(form));
+  });
+})();
+</script>

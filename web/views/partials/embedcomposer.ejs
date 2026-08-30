@@ -1,0 +1,38 @@
+<% const e = (typeof embed !== "undefined" && embed) ? embed : {};
+   const content = typeof tplContent !== "undefined" ? (tplContent || "") : ""; %>
+<div class="composer">
+  <div class="composer-fields">
+    <label>Message text <span class="hint">(sent above the embed — optional)</span>
+      <textarea name="content" rows="2"><%= content %></textarea></label>
+    <label>Embed title <input type="text" name="title" value="<%= e.title || '' %>"></label>
+    <label>Embed description <span class="hint">markdown ok</span>
+      <textarea name="description" rows="4"><%= e.description || '' %></textarea></label>
+    <div class="field-grid">
+      <label>Colour <input type="text" name="color" value="<%= e.color != null ? '#' + Number(e.color).toString(16).padStart(6,'0') : '' %>" placeholder="#5b6cff"></label>
+      <label class="check" style="align-self:end"><input type="checkbox" name="timestamp" <%= e.timestamp ? 'checked' : '' %>> Timestamp</label>
+      <label>Image URL <input type="text" name="image" value="<%= e.image || '' %>"></label>
+      <label>Thumbnail URL <input type="text" name="thumbnail" value="<%= e.thumbnail || '' %>"></label>
+      <label>Author name <input type="text" name="authorName" value="<%= e.author && e.author.name || '' %>"></label>
+      <label>Author icon URL <input type="text" name="authorIcon" value="<%= e.author && e.author.icon || '' %>"></label>
+      <label>Footer text <input type="text" name="footer" value="<%= e.footer || '' %>"></label>
+      <label>Title URL <input type="text" name="url" value="<%= e.url || '' %>"></label>
+    </div>
+    <details>
+      <summary class="btn ghost sm" style="display:inline-block">Fields (<%= (e.fields || []).length %>)</summary>
+      <% for (let i = 0; i < 3; i++) { const f = (e.fields || [])[i] || {}; %>
+      <div class="field-grid" style="margin-top:8px">
+        <label>Field <%= i + 1 %> name <input type="text" name="f<%= i %>name" value="<%= f.name || '' %>"></label>
+        <label>Field <%= i + 1 %> value <input type="text" name="f<%= i %>value" value="<%= f.value || '' %>"></label>
+        <label class="check" style="align-self:end"><input type="checkbox" name="f<%= i %>inline" <%= f.inline ? 'checked' : '' %>> inline</label>
+      </div>
+      <% } %>
+    </details>
+  </div>
+  <div class="composer-preview">
+    <div class="preview-label">Preview</div>
+    <div class="msg-preview">
+      <div class="mp-content" data-content></div>
+      <div class="embed-preview" data-preview></div>
+    </div>
+  </div>
+</div>

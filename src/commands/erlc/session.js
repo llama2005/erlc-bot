@@ -1,47 +1,42 @@
-import { EmbedBuilder } from "discord.js";
 import { erlc, ErlcError } from "../../lib/erlc.js";
 import { resolveChannel } from "../../lib/modlog.js";
-import { COLORS, EMOJI, ok, err } from "../../lib/style.js";
+import { ok } from "../../lib/style.js";
+import { getTemplate, renderPayload } from "../../lib/templates.js";
 import { erlcStaff, erlcKey } from "./_shared.js";
 
-const PRESETS = {
-  startup: {
-    title: "Session Start-Up",
-    color: COLORS.success,
-    emoji: EMOJI.online,
-    blurb: "A roleplay session is starting — join now!",
-    hint: "Session starting — welcome! Read the rules and stay in character.",
-  },
-  shutdown: {
-    title: "Session Shutdown",
-    color: COLORS.danger,
-    emoji: EMOJI.offline,
-    blurb: "The session has ended. Thanks for playing!",
-    hint: "Session over — thanks for playing. Server will be quiet until the next SSU.",
-  },
+const HINT = {
+  startup: "Session starting — welcome! Read the rules and stay in character.",
+  shutdown: "Session over — thanks for playing. Server will be quiet until the next SSU.",
 };
 
 async function announce(ctx, kind) {
-  const p = PRESETS[kind];
   const cfg = ctx.config;
   const dest = (await resolveChannel(ctx.client, cfg.sessionChannel)) ?? ctx.channel;
-
-  const embed = new EmbedBuilder()
-    .setColor(p.color)
-    .setTitle(`${p.emoji} ${p.title}`)
-    .setDescription(ctx.args.message?.trim() || p.blurb)
-    .setFooter({ text: `by ${ctx.author.tag ?? ctx.author.username}` })
-    .setTimestamp();
-
-  const content = cfg.sessionPingRole ? `<@&${cfg.sessionPingRole}>` : undefined;
-  await dest.send({ content, embeds: [embed], allowedMentions: { roles: cfg.sessionPingRole ? [cfg.sessionPingRole] : [] } });
-
-  // best-effort in-game hint
-  let hinted = false;
   const key = erlcKey(ctx);
+
+  // gather placeholder values
+  let server = null;
+  if (key) server = await erlc.server(key).catch(() => null);
+  const vars = {
+    message: ctx.args.message?.trim() || "",
+    server: server?.Name || "the server",
+    joinkey: server?.JoinKey || "—",
+    players: server ? `${server.CurrentPlayers}/${server.MaxPlayers}` : "—",
+    staff: `<@${ctx.author.id}>`,
+    staffname: ctx.author.tag ?? ctx.author.username,
+  };
+
+  const tpl = await getTemplate(ctx.guild.id, kind === "startup" ? "ssu" : "ssd");
+  const payload = renderPayload(tpl, vars);
+  if (!payload.embeds.length && !payload.content) payload.content = vars.message || tpl.name;
+
+  const content = [cfg.sessionPingRole ? `<@&${cfg.sessionPingRole}>` : "", payload.content].filter(Boolean).join(" ") || undefined;
+  await dest.send({ ...payload, content, allowedMentions: { roles: cfg.sessionPingRole ? [cfg.sessionPingRole] : [] } });
+
+  let hinted = false;
   if (key) {
     try {
-      await erlc.command(key, `:h ${p.hint}`);
+      await erlc.command(key, `:h ${HINT[kind]}`);
       hinted = true;
     } catch (e) {
       if (!(e instanceof ErlcError)) throw e;
@@ -49,7 +44,7 @@ async function announce(ctx, kind) {
   }
 
   await ctx.reply({
-    content: ok(`${p.title} announced in <#${dest.id}>.${hinted ? " In-game hint sent." : ""}`),
+    content: ok(`${tpl.name} announced in <#${dest.id}>.${hinted ? " In-game hint sent." : ""}`),
     ephemeral: true,
   });
 }

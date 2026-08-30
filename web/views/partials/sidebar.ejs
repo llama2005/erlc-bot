@@ -9,6 +9,7 @@ const I = {
   appeals: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
   banreqs: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></svg>',
   hints: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.1V17h6v-.2c0-.8.4-1.6 1-2.1A7 7 0 0 0 12 2z"/></svg>',
+  templates: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>',
 };
 const link = (path, key, label, badge) => {
   const active = tab === key ? ' active' : '';
@@ -32,8 +33,9 @@ const link = (path, key, label, badge) => {
     <%- link('appeals', 'appeals', 'Appeals', typeof counts !== 'undefined' ? counts.appeals : 0) %>
     <%- link('banreqs', 'banreqs', 'Ban requests', typeof counts !== 'undefined' ? counts.banreqs : 0) %>
     <div class="sep"></div>
-    <%- link('permissions', 'permissions', 'Permissions') %>
+    <%- link('templates', 'templates', 'Templates &amp; send') %>
     <%- link('autohints', 'autohints', 'Auto-hints') %>
+    <%- link('permissions', 'permissions', 'Permissions') %>
   </nav>
   <a href="/dashboard" class="back">← All servers</a>
 </aside>
