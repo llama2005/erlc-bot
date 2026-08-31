@@ -1,6 +1,9 @@
 import { getLinkByDiscord, getLinkByRoblox } from "./links.js";
 import { bloxlinkDiscordToRoblox, bloxlinkRobloxToDiscord } from "./bloxlink.js";
 import { userById } from "./roblox.js";
+import { isEnabled } from "./flags.js";
+
+const bloxlinkOn = (guildId) => isEnabled("bloxlink-fallback", { guildId });
 
 // Our /verify table first; Bloxlink as a fallback for the (many) ER:LC communities that
 // verify with Bloxlink instead. Return shape matches a roblox_links row so callers are
@@ -10,6 +13,7 @@ import { userById } from "./roblox.js";
 export async function resolveDiscordLink(discordId, guildId) {
   const row = await getLinkByDiscord(discordId).catch(() => null);
   if (row) return { ...row, source: "verify" };
+  if (!bloxlinkOn(guildId)) return null;
   const bl = await bloxlinkDiscordToRoblox(discordId, guildId);
   if (!bl) return null;
   const name = bl.robloxName || (await userById(bl.robloxId).then((u) => u?.name).catch(() => null));
@@ -20,6 +24,7 @@ export async function resolveDiscordLink(discordId, guildId) {
 export async function resolveRobloxLink(robloxId, guildId) {
   const row = await getLinkByRoblox(robloxId).catch(() => null);
   if (row) return { ...row, source: "verify" };
+  if (!bloxlinkOn(guildId)) return null;
   const discordId = await bloxlinkRobloxToDiscord(robloxId, guildId);
   if (!discordId) return null;
   const name = await userById(robloxId).then((u) => u?.name).catch(() => null);

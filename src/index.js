@@ -10,6 +10,7 @@ import { startScheduler } from "./lib/scheduler.js";
 import { warmGuildConfigs, ensureGuildConfig, startConfigSync, pruneGuildConfigCache } from "./lib/guildConfig.js";
 import { startPermSync, prunePermCache } from "./lib/permissions.js";
 import { warmErlcServers, startErlcServerSync, pruneErlcServerCache } from "./lib/erlcServers.js";
+import { startFlagSync } from "./lib/flags.js";
 import { registerExternalModlog } from "./lib/externalModlog.js";
 import { prunePlayerCache } from "./lib/autocomplete.js";
 import { syncBotGuild, removeBotGuild, syncAllBotGuilds } from "./lib/botGuilds.js";
@@ -23,6 +24,7 @@ await warmErlcServers();
 await startConfigSync().catch((e) => console.error("config sync setup failed:", e.message));
 await startPermSync().catch((e) => console.error("perm sync setup failed:", e.message));
 await startErlcServerSync().catch((e) => console.error("erlc server sync setup failed:", e.message));
+await startFlagSync().catch((e) => console.error("flag sync setup failed:", e.message));
 
 const client = new Client({
   intents: [

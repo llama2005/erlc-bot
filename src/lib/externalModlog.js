@@ -1,5 +1,6 @@
 import { Events, AuditLogEvent } from "discord.js";
 import { getGuildConfig } from "./guildConfig.js";
+import { isEnabled } from "./flags.js";
 import { createCase } from "./cases.js";
 import { logCase, renderCaseEmbed } from "./caseLog.js";
 
@@ -22,6 +23,7 @@ export function registerExternalModlog(client) {
   client.on(Events.GuildAuditLogEntryCreate, async (entry, guild) => {
     try {
       if (!guild || !getGuildConfig(guild.id).logExternalModeration) return;
+      if (!isEnabled("external-log", { guildId: guild.id })) return;
       if (entry.executorId === client.user.id) return; // the bot logs its own actions
 
       let type = ACTION_TYPE[entry.action];

@@ -19,6 +19,7 @@ import {
   startErlcServerSync,
 } from "../src/lib/erlcServers.js";
 import { getBotGuild, listBotGuilds } from "../src/lib/botGuilds.js";
+import { FLAGS, isEnabled, setFlag, clearFlag, listFlagRows, startFlagSync } from "../src/lib/flags.js";
 import {
   getRecentCases,
   getCase,
@@ -51,6 +52,7 @@ requireConfig("DATABASE_URL", "DISCORD_TOKEN", "DISCORD_CLIENT_ID", "DISCORD_CLI
 await initSchema();
 await startConfigSync().catch((e) => console.error("config sync setup failed:", e.message));
 await startErlcServerSync().catch((e) => console.error("erlc server sync setup failed:", e.message));
+await startFlagSync().catch((e) => console.error("flag sync setup failed:", e.message));
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -595,6 +597,26 @@ app.post("/dashboard/:guildId/send", requireAuth, requireGuildAdmin, async (req,
   if (!payload.content && !payload.embeds.length) return res.redirect(`/dashboard/${req.guild.id}/templates?sent=0`);
   const r = await d.postChannelMessage(target.channelId, payload);
   res.redirect(`/dashboard/${req.guild.id}/templates?sent=${r.ok ? "1" : "0"}`);
+});
+
+// ---- feature flags (per-guild opt-out) ----
+app.get("/dashboard/:guildId/flags", requireAuth, requireGuildAdmin, async (req, res) => {
+  const rows = listFlagRows();
+  const flags = Object.entries(FLAGS).map(([name, meta]) => ({
+    name,
+    description: meta.description,
+    effective: isEnabled(name, { guildId: req.guild.id }),
+    disabledHere: !!rows.find((r) => r.name === name && r.scope === "guild" && r.target === req.guild.id && r.enabled === false),
+  }));
+  await g(req, res, "flags", { tab: "flags", flags, saved: req.query.saved === "1" });
+});
+app.post("/dashboard/:guildId/flags", requireAuth, requireGuildAdmin, async (req, res) => {
+  const off = new Set([].concat(req.body.disable || []));
+  for (const name of Object.keys(FLAGS)) {
+    if (off.has(name)) await setFlag(name, "guild", req.guild.id, { enabled: false });
+    else await clearFlag(name, "guild", req.guild.id);
+  }
+  res.redirect(`/dashboard/${req.guild.id}/flags?saved=1`);
 });
 
 // ---- ER:LC servers ----

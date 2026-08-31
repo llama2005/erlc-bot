@@ -5,6 +5,7 @@ import { startShift, endShift } from "./shifts.js";
 import { logShiftEvent } from "./shiftLog.js";
 import { applyShiftRole } from "./shiftRole.js";
 import { formatDuration } from "./util.js";
+import { isEnabled } from "./flags.js";
 
 // ER:LC only logs valid `:` commands (`:pm`, `:kick`, …) in /server/commandlogs — a
 // bare `!clockin` / `:clockin` never reaches the API. So the reliable trigger is a PM:
@@ -23,7 +24,7 @@ const OUT_RE = new RegExp(String.raw`^(?::pm\s+\S+\s+|[!:.\/]*\s*)(?:${OUT})\s*$
  */
 export async function handleIngameShifts(client, guildId, server, entries) {
   const cfg = getGuildConfig(guildId);
-  if (!cfg.ingameShiftCommands) return;
+  if (!cfg.ingameShiftCommands || !isEnabled("ingame-shifts", { guildId })) return;
   const guild = client.guilds.cache.get(guildId);
 
   for (const e of entries) {

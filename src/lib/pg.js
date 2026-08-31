@@ -271,6 +271,35 @@ const SCHEMA = `
     updated_at BIGINT NOT NULL,
     PRIMARY KEY (guild_id, key)
   );
+
+  CREATE TABLE IF NOT EXISTS feature_flags (
+    name        TEXT NOT NULL,
+    scope       TEXT NOT NULL,             -- 'global' | 'guild' | 'user'
+    target      TEXT NOT NULL DEFAULT '',  -- guild id / user id / '' for global
+    enabled     BOOLEAN,                   -- explicit on/off; NULL = fall through to rollout
+    rollout_pct INTEGER NOT NULL DEFAULT 0,
+    updated_at  BIGINT NOT NULL,
+    PRIMARY KEY (name, scope, target)
+  );
+
+  CREATE TABLE IF NOT EXISTS bot_actions (
+    id              BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    guild_id        TEXT,                  -- NULL when global
+    target_id       TEXT NOT NULL,
+    type            TEXT NOT NULL,         -- 'warn' | 'lock'
+    reason          TEXT,
+    created_by      TEXT NOT NULL,
+    created_at      BIGINT NOT NULL,
+    expires_at      BIGINT,                -- timed lock; NULL = ack-to-clear
+    acknowledged_at BIGINT,
+    is_global       BOOLEAN NOT NULL DEFAULT false
+  );
+  CREATE INDEX IF NOT EXISTS idx_bot_actions_target ON bot_actions (target_id) WHERE acknowledged_at IS NULL;
+
+  CREATE TABLE IF NOT EXISTS bot_action_proof (
+    action_id BIGINT NOT NULL,
+    url       TEXT NOT NULL
+  );
 `;
 
 // Forward migrations for columns added after a guild's DB was first created.

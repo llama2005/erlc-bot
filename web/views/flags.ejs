@@ -1,0 +1,20 @@
+<%- include("partials/head", { title: "Features · " + guild.name }) %>
+
+<div class="page-head">
+  <div><h1>Features</h1><div class="sub">Turn optional features off for this server. Everything is on by default.</div></div>
+</div>
+<% if (saved) { %><div class="flash">✓ Saved.</div><% } %>
+
+<form method="post" action="/dashboard/<%= guild.id %>/flags" class="settings">
+  <section class="card">
+    <% flags.forEach(function(f){ %>
+      <label class="check">
+        <input type="checkbox" name="disable" value="<%= f.name %>" <%= f.disabledHere ? "checked" : "" %>>
+        Disable <strong><%= f.name %></strong> — <%= f.description %>
+        <% if (!f.effective && !f.disabledHere) { %><span class="badge warn" style="margin-left:6px">off (bot-wide)</span><% } %>
+      </label>
+    <% }) %>
+  </section>
+  <button type="submit" class="btn big">Save</button>
+</form>
+<%- include("partials/foot") %>
