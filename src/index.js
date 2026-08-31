@@ -1,7 +1,7 @@
 import http from "node:http";
 import { Client, Events, GatewayIntentBits, Partials, AuditLogEvent, EmbedBuilder, PermissionFlagsBits } from "discord.js";
 import { config, requireConfig } from "./config.js";
-import { initSentry, captureError } from "./lib/sentry.js";
+import { initSentry, captureError, flushSentry } from "./lib/sentry.js";
 import { pool, initSchema } from "./lib/pg.js";
 import { CommandManager } from "./lib/CommandManager.js";
 import { getPublicIp } from "./lib/publicIp.js";
@@ -184,6 +184,7 @@ for (const sig of ["SIGINT", "SIGTERM"]) {
   process.once(sig, async () => {
     console.log(`${sig} — shutting down`);
     client.destroy();
+    await Promise.race([flushSentry(), new Promise((r) => setTimeout(r, 2500))]).catch(() => {});
     await pool.end().catch(() => {});
     process.exit(0);
   });

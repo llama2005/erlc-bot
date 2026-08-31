@@ -54,4 +54,5 @@ export function captureFeedback(text, { user, tags = {} } = {}) {
 }
 
 export const sentryEnabled = () => on;
+export const flushSentry = (ms = 2000) => (on ? Sentry.close(ms) : Promise.resolve());
 export { Sentry };
