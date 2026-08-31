@@ -1,5 +1,5 @@
 import { erlc, ErlcError } from "../../lib/erlc.js";
-import { resolvePlayer, pm, notifyText } from "../../lib/erlcModeration.js";
+import { resolvePlayer, notifyText } from "../../lib/erlcModeration.js";
 import { resolveServer, getServers } from "../../lib/erlcServers.js";
 import { createCase, subjectStats } from "../../lib/cases.js";
 import { getModType } from "../../lib/modTypes.js";
@@ -90,8 +90,16 @@ export async function runAction(ctx, type, { reason, ingame } = {}) {
   });
 
   let notified = null;
+  let erlcErr = null; // the actual reason an in-game call failed (IP allowlist, rate limit, …)
   if (key && SENDS_PM.has(type) && target.online) {
-    notified = await pm(key, target.name, notifyText(type, { reason, moderatorTag: modTag, caseNumber: c.case_number }));
+    try {
+      await erlc.command(key, `:pm ${target.name} ${notifyText(type, { reason, moderatorTag: modTag, caseNumber: c.case_number })}`);
+      notified = true;
+    } catch (e) {
+      if (!(e instanceof ErlcError)) throw e;
+      notified = false;
+      erlcErr = e;
+    }
     if (ingame) await sleep(5200); // 1 command / 5s API limit
   }
 
@@ -109,6 +117,7 @@ export async function runAction(ctx, type, { reason, ingame } = {}) {
         if (targets.length > 1) await sleep(5200);
       } catch (e) {
         if (!(e instanceof ErlcError)) throw e;
+        erlcErr = e;
       }
     }
     executed = propagated > 0;
@@ -140,8 +149,12 @@ export async function runAction(ctx, type, { reason, ingame } = {}) {
   const history = await statSummary(ctx.guild.id, target.id);
   const notes = [];
   if (!target.online) notes.push("player offline");
-  if (notified === false) notes.push("in-game PM failed");
-  if (cmd && !executed) notes.push("in-game command failed — case still logged");
+  if ((notified === false || (cmd && !executed)) && erlcErr) {
+    notes.push(`in-game action failed — ${erlcErr.message}`); // e.g. IP not allowlisted, rate limited
+  } else {
+    if (notified === false) notes.push("in-game PM failed");
+    if (cmd && !executed) notes.push("in-game command failed — case still logged");
+  }
   if (cmd && propagated > 1) notes.push(`applied on ${propagated} servers`);
   if (boloNote) notes.push(boloNote);
 
