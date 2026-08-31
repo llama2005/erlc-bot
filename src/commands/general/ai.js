@@ -1,4 +1,4 @@
-import { askClaude, clearHistory } from "../../lib/ai.js";
+import { askAI, clearHistory } from "../../lib/ai.js";
 
 export default {
   name: "ai",
@@ -19,7 +19,7 @@ export default {
       await ctx.reply("Conversation history for this channel cleared.");
       return;
     }
-    const answer = await askClaude(ctx.channel.id, ctx.args.prompt);
+    const answer = await askAI(ctx.channel.id, ctx.args.prompt);
     await ctx.reply(answer);
   },
 };

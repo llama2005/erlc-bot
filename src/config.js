@@ -37,6 +37,7 @@ export const config = {
   },
 
   ai: {
+    // Anthropic API model identifier for the /ai command — override with ANTHROPIC_MODEL.
     model: env("ANTHROPIC_MODEL", "claude-opus-5"),
     effort: env("ANTHROPIC_EFFORT", "low"),
     maxTokens: Number(env("MAX_TOKENS", "1024")),

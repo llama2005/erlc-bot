@@ -1,7 +1,7 @@
 {
   "name": "discord-ai-bot",
   "version": "1.0.0",
-  "description": "Modular Discord command bot (slash + prefix) with typed args, rate limiting, per-guild config, and a Claude-powered AI command.",
+  "description": "Modular Discord command bot (slash + prefix) with typed args, rate limiting, per-guild config, and an AI command.",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",

@@ -2,8 +2,8 @@
 
 A public multi-server ER:LC + Discord moderation bot: modular slash/prefix commands
 with typed args and rate limiting, a unified numbered case system, staff shifts,
-Roblox↔Discord account linking, ban requests, automatic in-game logging, a
-Claude-powered `ai` command, and a **web dashboard**. Data lives in **Postgres**.
+Roblox↔Discord account linking, ban requests, automatic in-game logging, an
+AI-powered `ai` command, and a **web dashboard**. Data lives in **Postgres**.
 
 ## Setup
 

@@ -20,8 +20,8 @@ export function clearHistory(channelId) {
   histories.delete(channelId);
 }
 
-/** Send a prompt to Claude with per-channel rolling history. Returns the reply text. */
-export async function askClaude(channelId, prompt) {
+/** Send a prompt to the AI model with per-channel rolling history. Returns the reply text. */
+export async function askAI(channelId, prompt) {
   pushHistory(channelId, "user", prompt);
 
   const stream = anthropic.messages.stream({

@@ -17,7 +17,7 @@ export default {
     const embed = new EmbedBuilder()
       .setColor(COLORS.primary)
       .setAuthor({ name: c.user.username, iconURL: c.user.displayAvatarURL() })
-      .setDescription("A modular ER:LC + Discord moderation bot with shifts, case logging, and a Claude-powered assistant.")
+      .setDescription("A modular ER:LC + Discord moderation bot with shifts, case logging, and an AI assistant.")
       .addFields(
         { name: "Servers", value: `${c.guilds.cache.size}`, inline: true },
         { name: "Users", value: `${c.users.cache.size}`, inline: true },

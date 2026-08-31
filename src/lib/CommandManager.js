@@ -8,7 +8,7 @@ import { getGuildConfig } from "./guildConfig.js";
 import { checkRateLimit } from "./ratelimit.js";
 import { buildSlashOptions, parsePrefixArgs, parseSlashArgs, usageString } from "./args.js";
 import { tokenize } from "./util.js";
-import { askClaude } from "./ai.js";
+import { askAI } from "./ai.js";
 import { autocompleteProviders } from "./autocomplete.js";
 import { dispatchComponent } from "./components.js";
 import { ensureGuildConfig } from "./guildConfig.js";
@@ -267,7 +267,7 @@ export class CommandManager {
     if (!cfg.aiEnabled || !prompt) return;
     try {
       await message.channel.sendTyping();
-      const answer = await askClaude(message.channelId, prompt);
+      const answer = await askAI(message.channelId, prompt);
       await new Context({ client: this.client, source: message }).reply(answer);
     } catch (err) {
       console.error("AI fallback failed:", err);
