@@ -33,7 +33,7 @@ const FIELDS = {
   appealChannel: { kind: "channel", label: "Appeal channel", desc: "Ban appeals go here for review" },
   statusChannel: { kind: "channel", label: "Status channel", desc: "ER:LC server up/down alerts" },
   ingameAutolog: { kind: "bool", label: "In-game auto-log", desc: "Turn :kick/:ban/:pm-warn run in-game into cases" },
-  ingameShiftCommands: { kind: "bool", label: "In-game clock in/out", desc: "Staff type !clockin / !clockout in-game (needs /verify)" },
+  ingameShiftCommands: { kind: "bool", label: "In-game clock in/out", desc: "Staff type ':pm x clockin' / ':pm x clockout' in-game (needs /verify)" },
   // roles
   erlcStaffRole: { kind: "role", label: "Staff role", desc: "Use ER:LC / moderation / shift / session commands" },
   erlcAdminRole: { kind: "role", label: "Admin role", desc: "Approve ban requests, shift admin, void others' cases" },

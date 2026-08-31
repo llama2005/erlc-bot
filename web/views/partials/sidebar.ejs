@@ -14,7 +14,7 @@ const I = {
 };
 const link = (path, key, label, badge) => {
   const active = tab === key ? ' active' : '';
-  const href = '/dashboard/' + guild.id + (path ? '/' + path : '/overview');
+  const href = '/dashboard/' + guild.id + (path ? '/' + path : ''); // '' → the settings page at the guild root
   const b = badge ? ` <span class="badge warn" style="margin-left:auto">${badge}</span>` : '';
   return `<a href="${href}" class="${active.trim()}">${I[key] || ''}<span>${label}</span>${b}</a>`;
 };

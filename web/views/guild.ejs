@@ -52,7 +52,7 @@ function roleSelect(name, selected) {
     <h2>In-game auto-log</h2>
     <label class="check"><input type="checkbox" name="ingameAutolog" <%= cfg.ingameAutolog ? "checked" : "" %>> Turn <code>:kick</code> / <code>:ban</code> / <code>:jail</code> run in-game — and <code>:pm &lt;player&gt; &lt;trigger&gt; &lt;reason&gt;</code> — into logged cases</label>
     <label>Warn trigger word (used in <code>:pm player <trigger> reason</code>) <input type="text" name="ingameWarnTrigger" value="<%= cfg.ingameWarnTrigger || 'warn' %>" maxlength="16" size="10"></label>
-    <label class="check"><input type="checkbox" name="ingameShiftCommands" <%= cfg.ingameShiftCommands ? "checked" : "" %>> Let staff type <code>!clockin</code> / <code>!clockout</code> in-game to start/end a shift (they must have run <code>/verify</code>)</label>
+    <label class="check"><input type="checkbox" name="ingameShiftCommands" <%= cfg.ingameShiftCommands ? "checked" : "" %>> Let staff start/end a shift in-game by PMing the trigger: <code>:pm &lt;name&gt; clockin</code> / <code>:pm &lt;name&gt; clockout</code> (they must have run <code>/verify</code>)</label>
   </section>
 
   <section class="card">
