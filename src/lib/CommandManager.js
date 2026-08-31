@@ -15,6 +15,8 @@ import { ensureGuildConfig } from "./guildConfig.js";
 import { requirePermission } from "./permissions.js";
 import { DUTY_NODES, reportOffDuty } from "./dutyWatch.js";
 import { logCommand } from "./modlog.js";
+import { captureError } from "./sentry.js";
+import { feedbackButton } from "./feedback.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const COMMANDS_DIR = path.join(here, "..", "commands");
@@ -186,6 +188,7 @@ export class CommandManager {
         await interaction.reply({ content: "This control is no longer active.", flags: 1 << 6 }).catch(() => {});
     } catch (err) {
       console.error(`Component handler error [${kind} ${interaction.customId}]:`, err);
+      captureError(err, { tags: { component: interaction.customId?.split(":")[0], guildId: interaction.guildId }, user: interaction.user?.id });
       const msg = { content: "Something went wrong handling that.", flags: 1 << 6 };
       try {
         if (interaction.replied || interaction.deferred) await interaction.followUp(msg);
@@ -348,6 +351,8 @@ export class CommandManager {
       }
     } catch (err) {
       console.error(`Command '${command.name}' failed:`, err);
+      const known =
+        err?.name === "ErlcError" || err instanceof Anthropic.RateLimitError || err instanceof Anthropic.APIError;
       const msg =
         err?.name === "ErlcError"
           ? err.message
@@ -356,7 +361,16 @@ export class CommandManager {
             : err instanceof Anthropic.APIError
               ? `API error (${err.status}). Check the logs.`
               : "Something went wrong running that command.";
-      await ctx.reply({ content: msg, ephemeral: true }).catch(() => {});
+      const components = [];
+      if (!known) {
+        const eventId = captureError(err, {
+          tags: { command: command.name, guildId: ctx.guild?.id, via: interaction ? "slash" : "prefix" },
+          user: ctx.author.id,
+        });
+        const btn = feedbackButton(eventId);
+        if (btn) components.push(btn);
+      }
+      await ctx.reply({ content: msg, components, ephemeral: true }).catch(() => {});
     }
   }
 }

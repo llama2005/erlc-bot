@@ -5,6 +5,7 @@ import cookieParser from "cookie-parser";
 import crypto from "node:crypto";
 
 import { config, requireConfig } from "../src/config.js";
+import { initSentry, captureError } from "../src/lib/sentry.js";
 import { initSchema, pool } from "../src/lib/pg.js";
 import { refreshGuildConfig, setGuildConfig, startConfigSync } from "../src/lib/guildConfig.js";
 import {
@@ -45,6 +46,7 @@ import { formatDuration, parseDuration } from "../src/lib/util.js";
 import * as d from "./discord.js";
 import { setSession, clearSession, readSession, requireAuth } from "./auth.js";
 
+initSentry("web");
 requireConfig("DATABASE_URL", "DISCORD_TOKEN", "DISCORD_CLIENT_ID", "DISCORD_CLIENT_SECRET", "SESSION_SECRET");
 await initSchema();
 await startConfigSync().catch((e) => console.error("config sync setup failed:", e.message));
@@ -713,5 +715,12 @@ app.post("/dashboard/:guildId/banreqs/:id/:decision", requireAuth, requireGuildA
 });
 
 app.use((req, res) => res.status(404).render("error", { user: readSession(req), message: "Not found." }));
+
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, _next) => {
+  console.error(`${req.method} ${req.path} →`, err);
+  captureError(err, { tags: { scope: "web", method: req.method, path: req.path }, user: readSession(req)?.id });
+  if (!res.headersSent) res.status(500).render("error", { user: readSession(req), message: "Something went wrong." });
+});
 
 app.listen(config.web.port, () => console.log(`Dashboard on ${BASE} (port ${config.web.port})`));

@@ -1,6 +1,7 @@
 import http from "node:http";
 import { Client, Events, GatewayIntentBits, Partials, AuditLogEvent, EmbedBuilder, PermissionFlagsBits } from "discord.js";
 import { config, requireConfig } from "./config.js";
+import { initSentry, captureError } from "./lib/sentry.js";
 import { pool, initSchema } from "./lib/pg.js";
 import { CommandManager } from "./lib/CommandManager.js";
 import { getPublicIp } from "./lib/publicIp.js";
@@ -14,6 +15,7 @@ import { prunePlayerCache } from "./lib/autocomplete.js";
 import { syncBotGuild, removeBotGuild, syncAllBotGuilds } from "./lib/botGuilds.js";
 import { startPresence, bumpPresence } from "./lib/presence.js";
 
+initSentry("bot");
 requireConfig("DISCORD_TOKEN", "ANTHROPIC_API_KEY", "DATABASE_URL");
 await initSchema();
 await warmGuildConfigs();
@@ -137,9 +139,19 @@ client.on(Events.InteractionCreate, (interaction) => {
   manager.handleInteraction(interaction).catch((e) => console.error("handleInteraction error:", e));
 });
 
-client.on(Events.Error, (e) => console.error("Client error:", e));
+client.on(Events.Error, (e) => {
+  console.error("Client error:", e);
+  captureError(e, { tags: { scope: "client" } });
+});
 client.on(Events.ShardError, (e) => console.error("Shard error:", e));
-process.on("unhandledRejection", (e) => console.error("Unhandled rejection:", e));
+process.on("unhandledRejection", (e) => {
+  console.error("Unhandled rejection:", e);
+  captureError(e instanceof Error ? e : new Error(String(e)), { tags: { scope: "unhandledRejection" } });
+});
+process.on("uncaughtException", (e) => {
+  console.error("Uncaught exception:", e);
+  captureError(e, { tags: { scope: "uncaughtException" } });
+});
 
 // Optional health endpoint for uptime monitors (Render workers have no port by default).
 if (process.env.HEALTHCHECK_PORT) {
