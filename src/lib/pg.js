@@ -351,7 +351,7 @@ const MIGRATIONS = `
 export const GUILD_SCOPED_TABLES = [
   "guild_config", "guild_counters", "mod_cases", "mod_types", "shift_types", "shifts",
   "ban_requests", "erlc_servers", "perm_groups", "loa", "appeals", "autohints", "reminders",
-  "button_role_panels", "tickets", "message_templates",
+  "button_role_panels", "tickets", "message_templates", "bot_actions",
 ];
 
 export async function initSchema() {

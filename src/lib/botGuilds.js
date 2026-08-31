@@ -51,6 +51,8 @@ export async function purgeGuildData(guildId, { dropBotGuild = false } = {}) {
       );
       rows += r.rowCount ?? 0;
     }
+    // bot_action_proof is keyed by action_id; bot_actions global rows (guild_id NULL) survive.
+    await c.query("DELETE FROM bot_action_proof WHERE action_id IN (SELECT id FROM bot_actions WHERE guild_id=$1)", [guildId]);
     for (const t of GUILD_SCOPED_TABLES) {
       const r = await c.query(`DELETE FROM ${t} WHERE guild_id=$1`, [guildId]);
       rows += r.rowCount ?? 0;

@@ -17,6 +17,7 @@ import { DUTY_NODES, reportOffDuty } from "./dutyWatch.js";
 import { logCommand } from "./modlog.js";
 import { captureError } from "./sentry.js";
 import { feedbackButton } from "./feedback.js";
+import { gateCheck, gateReply } from "./ackGate.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const COMMANDS_DIR = path.join(here, "..", "commands");
@@ -174,6 +175,10 @@ export class CommandManager {
 
   async handleComponent(interaction) {
     await ensureGuildConfig(interaction.guildId).catch(() => {});
+    if (!interaction.customId?.startsWith("ack:")) {
+      const locked = await this.#gate(interaction.user.id, interaction.guildId);
+      if (locked) return interaction.reply(gateReply(locked)).catch(() => {});
+    }
     const kind = interaction.isButton()
       ? "button"
       : interaction.isModalSubmit()
@@ -202,6 +207,8 @@ export class CommandManager {
   async handleInteraction(interaction) {
     if (!interaction.isChatInputCommand()) return;
     await ensureGuildConfig(interaction.guildId).catch(() => {});
+    const locked = await this.#gate(interaction.user.id, interaction.guildId);
+    if (locked) return interaction.reply(gateReply(locked)).catch(() => {});
     const parent = this.resolve(interaction.commandName);
     if (!parent) return;
 
@@ -220,6 +227,18 @@ export class CommandManager {
     if (message.author.bot || message.webhookId) return;
 
     if (message.guild) await ensureGuildConfig(message.guild.id).catch(() => {});
+    const locked = await this.#gate(message.author.id, message.guild?.id);
+    if (locked) {
+      // only answer if this was actually aimed at the bot, to avoid noise in chat
+      const cfg2 = getGuildConfig(message.guild?.id);
+      const aimed = message.content.startsWith(cfg2.prefix) || new RegExp(`^<@!?${this.client.user.id}>`).test(message.content) || !message.guild;
+      if (aimed) {
+        const r = gateReply(locked);
+        delete r.flags; // ephemeral is interaction-only
+        await message.reply(r).catch(() => {});
+      }
+      return;
+    }
     const cfg = getGuildConfig(message.guild?.id);
     const mentionRe = new RegExp(`^<@!?${this.client.user.id}>\\s*`);
     let content = message.content;
@@ -263,6 +282,11 @@ export class CommandManager {
     if (via === "mention" || via === "dm") {
       await this.#aiFallback(message, [name, ...tokens].join(" ").trim());
     }
+  }
+
+  /** The lock currently blocking `userId` (owners bypass), or null. */
+  #gate(userId, guildId) {
+    return gateCheck(userId, guildId, !!this.client?.ownerIds?.includes(userId)).catch(() => null);
   }
 
   async #aiFallback(message, prompt) {
