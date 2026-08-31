@@ -61,6 +61,7 @@ export default {
           name: "Other",
           value: [
             `In-game auto-log: **${c.ingameAutolog ? "on" : "off"}** (\`/config ingame-autolog\`)`,
+            `In-game \`!clockin\` / \`!clockout\`: **${c.ingameShiftCommands ? "on" : "off"}** (\`/config ingame-shifts\`)`,
             `External Discord mod-log: **${c.logExternalModeration ? "on" : "off"}** (\`/config external-log\`)${
               c.logExternalModeration && !ctx.guild.members.me?.permissions.has("ViewAuditLog")
                 ? " — ⚠️ grant the bot **View Audit Log**"

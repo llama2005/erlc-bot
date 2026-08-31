@@ -32,6 +32,7 @@ const SETTINGS = {
   "session-role": { field: "sessionPingRole", kind: "role", label: "Session ping role" },
   "ticket-role": { field: "ticketStaffRole", kind: "role", label: "Ticket staff role" },
   "ingame-autolog": { field: "ingameAutolog", kind: "bool", label: "In-game auto-log" },
+  "ingame-shifts": { field: "ingameShiftCommands", kind: "bool", label: "In-game !clockin / !clockout" },
   "warn-trigger": { field: "ingameWarnTrigger", kind: "word", label: "In-game warn trigger word" },
   "case-quota": { field: "weeklyCaseQuota", kind: "int", label: "Weekly case quota" },
   "shift-quota": { field: "weeklyShiftQuota", kind: "duration", label: "Weekly shift-time quota" },

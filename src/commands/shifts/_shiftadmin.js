@@ -29,19 +29,12 @@ import {
   setShiftTypeById,
   deleteShift,
 } from "../../lib/shifts.js";
-import { getGuildConfig } from "../../lib/guildConfig.js";
+import { applyShiftRole as toggleShiftRole } from "../../lib/shiftRole.js";
 import { logShiftEvent } from "../../lib/shiftLog.js";
 
 const WEEK = 7 * 24 * 60 * 60 * 1000;
 const PER_PAGE = 6;
 const EPH = 1 << 6;
-
-async function toggleShiftRole(guild, userId, add) {
-  const roleId = getGuildConfig(guild.id).shiftRole;
-  if (!roleId || !guild.members.me?.permissions.has("ManageRoles")) return;
-  const member = await guild.members.fetch(userId).catch(() => null);
-  if (member) await (add ? member.roles.add(roleId) : member.roles.remove(roleId)).catch(() => {});
-}
 
 const nameFor = async (guild, uid) =>
   (await guild.members.fetch(uid).catch(() => null))?.user?.username ?? `user …${String(uid).slice(-4)}`;

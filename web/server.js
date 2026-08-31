@@ -312,6 +312,7 @@ app.post("/dashboard/:guildId", requireAuth, requireGuildAdmin, async (req, res)
     sessionPingRole: orNull(b.sessionPingRole),
     ticketStaffRole: orNull(b.ticketStaffRole),
     ingameAutolog: b.ingameAutolog === "on",
+    ingameShiftCommands: b.ingameShiftCommands === "on",
     ingameWarnTrigger: (b.ingameWarnTrigger || "warn").toLowerCase().replace(/[^a-z0-9_-]/g, "") || "warn",
     weeklyCaseQuota: Math.max(0, parseInt(b.weeklyCaseQuota, 10) || 0),
     weeklyShiftQuota: Math.max(0, parseInt(b.weeklyShiftQuotaMin, 10) || 0) * 60000,

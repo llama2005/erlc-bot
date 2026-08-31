@@ -299,6 +299,7 @@ const MIGRATIONS = `
   ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS log_external_moderation BOOLEAN NOT NULL DEFAULT false;
   ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS hard_void BOOLEAN NOT NULL DEFAULT true;
   ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS shift_log_channel TEXT;
+  ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS ingame_shift_commands BOOLEAN NOT NULL DEFAULT false;
   ALTER TABLE ban_requests ADD COLUMN IF NOT EXISTS resolved_at BIGINT;
   ALTER TABLE appeals ADD COLUMN IF NOT EXISTS reviewed_at BIGINT;
   ALTER TABLE loa ADD COLUMN IF NOT EXISTS reviewed_at BIGINT;

@@ -6,6 +6,7 @@ import { getServers } from "./erlcServers.js";
 import { resolveChannel, resolveSendable } from "./modlog.js";
 import { getLinkByRoblox } from "./links.js";
 import { autologCommandEntries } from "./ingameAutolog.js";
+import { handleIngameShifts } from "./ingameShifts.js";
 import { COLORS, EMOJI } from "./style.js";
 import { sleep } from "./util.js";
 
@@ -121,7 +122,8 @@ async function pollServer(client, guildId, server, cfg, showLabel) {
   for (const [type, field, fetch] of JOBS) {
     const channelId = cfg[field];
     const autolog = type === "command" && cfg.ingameAutolog;
-    if (!channelId && !autolog) continue;
+    const ingameShifts = type === "command" && cfg.ingameShiftCommands;
+    if (!channelId && !autolog && !ingameShifts) continue;
     const channel = channelId ? await resolveChannel(client, channelId, guildId) : null;
 
     let entries;
@@ -154,6 +156,8 @@ async function pollServer(client, guildId, server, cfg, showLabel) {
       }
       if (autolog)
         await autologCommandEntries(client, guildId, server.id, fresh, players).catch((e) => console.error("autolog:", e.message));
+      if (ingameShifts)
+        await handleIngameShifts(client, guildId, server, fresh).catch((e) => console.error("ingame shifts:", e.message));
     }
     if (maxTs > cursor) await setCursor(server.id, type, maxTs);
     await sleep(400); // gentle spacing between endpoints

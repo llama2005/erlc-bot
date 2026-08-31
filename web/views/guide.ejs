@@ -222,6 +222,14 @@
       run directly in-game — and warn-PMs (<code>:pm player warn reason</code>) — into logged cases, so
       staff don't have to use the Discord commands. Change the warn keyword with <code>/config warn-trigger</code>.
     </p>
+    <h3>In-game clock in / out</h3>
+    <p>
+      <code>/config ingame-shifts on</code> lets staff type <code>!clockin</code> / <code>!clockout</code>
+      in-game to start and end a shift without opening Discord. They must have linked their account with
+      <code>/verify</code> first; the bot confirms with an in-game PM. Depends on ER:LC surfacing the
+      message in its command logs — if it doesn't register, <code>:clockin</code> / <code>:clockout</code>
+      also work.
+    </p>
     <h3>External Discord moderation</h3>
     <p>
       <code>/config external-log on</code> makes a manual right-click ban / kick / timeout in Discord
@@ -348,6 +356,7 @@
         <tr><td><code>session-role</code></td><td>role</td><td>Pinged on SSU / SSD.</td></tr>
         <tr><td><code>ticket-role</code></td><td>role</td><td>Added to every opened ticket.</td></tr>
         <tr><td><code>ingame-autolog</code></td><td>on/off</td><td>Turn in-game <code>:kick</code>/<code>:ban</code>/<code>:jail</code> &amp; warn-PMs into cases.</td></tr>
+        <tr><td><code>ingame-shifts</code></td><td>on/off</td><td>Staff type <code>!clockin</code>/<code>!clockout</code> in-game to start/end a shift (needs <code>/verify</code>).</td></tr>
         <tr><td><code>warn-trigger</code></td><td>word</td><td>Keyword in <code>:pm player &lt;word&gt; reason</code> that means "warn" (default <code>warn</code>).</td></tr>
         <tr><td><code>external-log</code></td><td>on/off</td><td>Log Discord bans/kicks/timeouts done outside the bot. Needs View Audit Log.</td></tr>
         <tr><td><code>hard-void</code></td><td>on/off</td><td>On (default): voiding deletes the case. Off: keep a greyed record.</td></tr>

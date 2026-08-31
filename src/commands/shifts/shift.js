@@ -16,16 +16,7 @@ import { logShiftEvent } from "../../lib/shiftLog.js";
 
 const WEEK = 7 * 24 * 60 * 60 * 1000;
 
-import { getGuildConfig } from "../../lib/guildConfig.js";
-
-async function toggleShiftRole(guild, userId, add) {
-  const roleId = getGuildConfig(guild.id).shiftRole;
-  if (!roleId) return;
-  const me = guild.members.me;
-  if (!me?.permissions.has("ManageRoles")) return;
-  const member = await guild.members.fetch(userId).catch(() => null);
-  if (member) await (add ? member.roles.add(roleId) : member.roles.remove(roleId)).catch(() => {});
-}
+import { applyShiftRole as toggleShiftRole } from "../../lib/shiftRole.js";
 
 async function panel(guild, userId, username, type = "default") {
   const [active, all, week, trend] = await Promise.all([

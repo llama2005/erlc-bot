@@ -34,6 +34,7 @@ const COLUMNS = {
   weeklyShiftQuota: { col: "weekly_shift_quota", def: () => 0 },
   weeklyCaseQuota: { col: "weekly_case_quota", def: () => 0 },
   ingameAutolog: { col: "ingame_autolog", def: () => true },
+  ingameShiftCommands: { col: "ingame_shift_commands", def: () => false },
   ingameWarnTrigger: { col: "ingame_warn_trigger", def: () => "warn" },
   erlcBanAllServers: { col: "erlc_ban_all_servers", def: () => false },
   logExternalModeration: { col: "log_external_moderation", def: () => false },
