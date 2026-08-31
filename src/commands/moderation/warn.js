@@ -8,6 +8,6 @@ export default {
   defer: true,
   permission: "mod.warn",
   ratelimit: { scope: "user", uses: 5, per: 15_000 },
-  args: [PLAYER_ARG, { name: "reason", type: "text", required: true, description: "Reason" }, SERVER_ARG],
+  args: [PLAYER_ARG, { name: "reason", type: "text", required: false, description: "Reason" }, SERVER_ARG],
   execute: (ctx) => runAction(ctx, "warn", { reason: ctx.args.reason }),
 };

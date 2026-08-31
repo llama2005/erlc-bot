@@ -58,7 +58,7 @@ const SCHEMA = `
     modlog_channel      TEXT,
     command_log_channel TEXT,
     ai_enabled          BOOLEAN NOT NULL DEFAULT true,
-    reason_required     BOOLEAN NOT NULL DEFAULT false,
+    reason_required     BOOLEAN NOT NULL DEFAULT true,
     erlc_key            TEXT,
     erlc_staff_role     TEXT,
     erlc_admin_role     TEXT,
@@ -300,6 +300,12 @@ const SCHEMA = `
     action_id BIGINT NOT NULL,
     url       TEXT NOT NULL
   );
+
+  -- tiny key/value store for one-time data migrations that can't be expressed idempotently
+  CREATE TABLE IF NOT EXISTS kv_flags (
+    key TEXT PRIMARY KEY,
+    val TEXT NOT NULL DEFAULT '1'
+  );
 `;
 
 // Forward migrations for columns added after a guild's DB was first created.
@@ -329,6 +335,7 @@ const MIGRATIONS = `
   ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS hard_void BOOLEAN NOT NULL DEFAULT true;
   ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS shift_log_channel TEXT;
   ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS ingame_shift_commands BOOLEAN NOT NULL DEFAULT false;
+  ALTER TABLE guild_config ALTER COLUMN reason_required SET DEFAULT true;
   ALTER TABLE ban_requests ADD COLUMN IF NOT EXISTS resolved_at BIGINT;
   ALTER TABLE appeals ADD COLUMN IF NOT EXISTS reviewed_at BIGINT;
   ALTER TABLE loa ADD COLUMN IF NOT EXISTS reviewed_at BIGINT;
@@ -357,6 +364,16 @@ export const GUILD_SCOPED_TABLES = [
 export async function initSchema() {
   await pool.query(SCHEMA);
   await pool.query(MIGRATIONS);
+  await oneTime("reason_required_default_on", "UPDATE guild_config SET reason_required = true");
+}
+
+/** Run `sql` exactly once ever (tracked in kv_flags), for data flips that can't be idempotent. */
+async function oneTime(key, sql) {
+  const done = await pool.query("SELECT 1 FROM kv_flags WHERE key=$1", [key]);
+  if (done.rowCount) return;
+  await pool.query(sql);
+  await pool.query("INSERT INTO kv_flags (key) VALUES ($1) ON CONFLICT DO NOTHING", [key]);
+  console.log(`one-time migration applied: ${key}`);
 }
 
 /**

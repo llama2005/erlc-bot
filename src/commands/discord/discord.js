@@ -18,9 +18,11 @@ async function statSummary(guildId, userId) {
 }
 
 /** Create the case, run `perform`, DM the user, reply + modlog with one shared embed. */
+const REASON_EXEMPT = new Set(["unban", "unmute"]); // reversal actions never force a reason
+
 async function act(ctx, { type, user, reason, durationMs = null, perform, dm = true }) {
-  if (ctx.config.reasonRequired && !reason)
-    return ctx.reply({ content: err("This server requires a reason for moderation actions."), ephemeral: true });
+  if (ctx.config.reasonRequired && !reason && !REASON_EXEMPT.has(type))
+    return ctx.reply({ content: err("A reason is required for moderation actions here (`/config reason-required off` to relax)."), ephemeral: true });
 
   const tag = user.tag ?? user.username;
   const c = await createCase({

@@ -249,7 +249,7 @@
     </p>
     <h3>Other toggles</h3>
     <p>
-      <code>/config reason-required on</code> forces a reason on every moderation action ·
+      <code>/config reason-required off</code> lets staff moderate without a reason (it's required by default) ·
       <code>/config ai off</code> disables the <code>/ai</code> assistant and @mention replies ·
       <code>/prefix &lt;char&gt;</code> changes the prefix for prefix commands ·
       <code>/config disable &lt;module&gt;</code> turns off a whole command group.
@@ -360,7 +360,7 @@
         <tr><td><code>warn-trigger</code></td><td>word</td><td>Keyword in <code>:pm player &lt;word&gt; reason</code> that means "warn" (default <code>warn</code>).</td></tr>
         <tr><td><code>external-log</code></td><td>on/off</td><td>Log Discord bans/kicks/timeouts done outside the bot. Needs View Audit Log.</td></tr>
         <tr><td><code>hard-void</code></td><td>on/off</td><td>On (default): voiding deletes the case. Off: keep a greyed record.</td></tr>
-        <tr><td><code>reason-required</code></td><td>on/off</td><td>Force a reason on every moderation action.</td></tr>
+        <tr><td><code>reason-required</code></td><td>on/off</td><td>Require a reason on punitive moderation actions. <strong>On by default</strong>; unban/unjail/unmute are always exempt.</td></tr>
         <tr><td><code>ai</code></td><td>on/off</td><td>The <code>/ai</code> command and @mention replies.</td></tr>
         <tr><td><code>case-quota</code></td><td>number</td><td>Weekly cases-per-staff target (0 = off).</td></tr>
         <tr><td><code>shift-quota</code></td><td>duration</td><td>Weekly shift-time-per-staff target, e.g. <code>3h</code> (0 = off).</td></tr>

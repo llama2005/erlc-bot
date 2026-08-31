@@ -24,6 +24,7 @@ const REQUIRES_ONLINE = new Set(["kick", "jail", "unjail"]);
 const SENDS_PM = new Set(["warn", "kick", "ban", "jail", "unjail"]);
 const PROPAGATES = new Set(["ban", "unban"]); // may run on every server when erlcBanAllServers is on
 const BOLO_TYPES = new Set(["kick", "ban"]); // `--bolo` also files a ban request for these
+const REASON_EXEMPT = new Set(["unban", "unjail", "note"]); // never force a reason on these
 
 /** Optional flag for /kick and /ban — also file a ban request for senior staff. */
 export const BOLO_ARG = { name: "bolo", type: "bool", required: false, description: "Also file a ban request for senior staff to review" };
@@ -48,8 +49,10 @@ export async function runAction(ctx, type, { reason, ingame } = {}) {
   const { server, matched } = await resolveServer(ctx.guild.id, ctx.args?.server);
   const key = server?.api_key ?? null;
 
-  if (ctx.config.reasonRequired && !reason)
-    return ctx.reply({ content: err("This server requires a reason for moderation actions."), ephemeral: true });
+  // Reason is required for punitive actions unless `/config reason-required off`. Reversal
+  // actions (unban/unjail) and `note` (which carries its own required text) are exempt.
+  if (ctx.config.reasonRequired && !reason && !REASON_EXEMPT.has(type))
+    return ctx.reply({ content: err("A reason is required for moderation actions here (`/config reason-required off` to relax)."), ephemeral: true });
 
   if (ingame && !key)
     return ctx.reply({

@@ -67,6 +67,7 @@ export default {
                 ? " — ⚠️ grant the bot **View Audit Log**"
                 : ""
             }`,
+            `Reason required: **${c.reasonRequired ? "on" : "off"}** (\`/config reason-required\`)`,
             `Void mode: **${c.hardVoid ? "hard-delete" : "keep greyed record"}** (\`/config hard-void\`)`,
             `Disabled modules: ${c.disabledModules.length ? c.disabledModules.join(", ") : "none"}`,
             `Prefix: \`${c.prefix}\``,
