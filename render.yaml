@@ -11,7 +11,7 @@ services:
     plan: starter # workers need a paid plan; Starter gets static outbound IPs
     region: oregon
     buildCommand: npm ci --omit=dev
-    startCommand: node src/index.js
+    startCommand: node src/start.js
     autoDeploy: true
     envVars:
       - key: NODE_ENV

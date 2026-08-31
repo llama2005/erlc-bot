@@ -42,21 +42,25 @@ const manager = new CommandManager(client);
 client.manager = manager;
 
 client.once(Events.ClientReady, async (c) => {
-  console.log(`Logged in as ${c.user.tag}`);
+  // With sharding, one shard owns the global/reconcile work; without, this is always true.
+  const primary = !c.shard || c.shard.ids[0] === 0;
+  console.log(`Logged in as ${c.user.tag}${c.shard ? ` (shard ${c.shard.ids.join(",")})` : ""}`);
   console.log(`In ${c.guilds.cache.size} server(s)`);
   startPresence(c); // "Watching N guilds and M users!" — refreshed on join/leave + every 10m
 
   getPublicIp().then((ip) => ip && console.log(`Public IP: ${ip} (allowlist at https://api.erlc.gg/server-owners for in-game commands)`));
 
   await manager.load();
-  // Public bot → always register globally. DEV_GUILD_ID is a dev-instance-only fast path
-  // (guild-scoped commands appear instantly; global takes ~1h to propagate).
-  const devGuild = config.isDev ? config.devGuildId : "";
-  await manager.registerSlashCommands(devGuild).catch((e) => console.error("Slash registration failed:", e));
+  if (primary) {
+    // Public bot → always register globally. DEV_GUILD_ID is a dev-instance-only fast path
+    // (guild-scoped commands appear instantly; global takes ~1h to propagate).
+    const devGuild = config.isDev ? config.devGuildId : "";
+    await manager.registerSlashCommands(devGuild).catch((e) => console.error("Slash registration failed:", e));
+  }
 
-  await syncAllBotGuilds(c).catch((e) => console.error("botGuilds sync failed:", e.message));
+  await syncAllBotGuilds(c, { primary }).catch((e) => console.error("botGuilds sync failed:", e.message));
   startErlcPoller(c);
-  startScheduler(c);
+  startScheduler(c, { primary });
   registerExternalModlog(c);
 
   // Evict in-memory per-guild caches for guilds the bot has left.

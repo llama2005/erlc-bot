@@ -3,11 +3,23 @@ import { ActivityType } from "discord.js";
 const fmt = (n) => n.toLocaleString("en-US");
 const plural = (n, word) => `${fmt(n)} ${word}${n === 1 ? "" : "s"}`;
 
-/** Set the bot's "Watching N guilds and M users!" presence from the live cache. */
-function apply(client) {
+/** Set the bot's "Watching N guilds and M users!" presence. Aggregates across shards. */
+async function apply(client) {
   if (!client.user) return;
-  const guilds = client.guilds.cache.size;
-  const users = client.guilds.cache.reduce((sum, g) => sum + (g.memberCount || 0), 0);
+  let guilds = client.guilds.cache.size;
+  let users = client.guilds.cache.reduce((sum, g) => sum + (g.memberCount || 0), 0);
+  if (client.shard) {
+    try {
+      const per = await client.shard.broadcastEval((c) => ({
+        g: c.guilds.cache.size,
+        u: c.guilds.cache.reduce((s, x) => s + (x.memberCount || 0), 0),
+      }));
+      guilds = per.reduce((s, x) => s + x.g, 0);
+      users = per.reduce((s, x) => s + x.u, 0);
+    } catch {
+      /* fall back to this shard's own numbers */
+    }
+  }
   client.user.setPresence({
     status: "online",
     activities: [{ name: `${plural(guilds, "guild")} and ${plural(users, "user")}!`, type: ActivityType.Watching }],
@@ -22,13 +34,13 @@ let debounce = null;
  */
 export function bumpPresence(client) {
   clearTimeout(debounce);
-  debounce = setTimeout(() => apply(client), 3_000);
+  debounce = setTimeout(() => apply(client).catch(() => {}), 3_000);
   debounce.unref?.();
 }
 
 /** Apply once now and keep it fresh (member counts drift as people join/leave servers). */
 export function startPresence(client, { intervalMs = 10 * 60_000 } = {}) {
-  apply(client);
-  const iv = setInterval(() => apply(client), intervalMs);
+  apply(client).catch(() => {});
+  const iv = setInterval(() => apply(client).catch(() => {}), intervalMs);
   iv.unref?.();
 }

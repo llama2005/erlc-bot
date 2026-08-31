@@ -20,9 +20,14 @@ export const getBotGuild = (guildId) =>
   one("SELECT * FROM bot_guilds WHERE guild_id=$1 AND removed_at IS NULL", [guildId]);
 
 /** Reconcile the whole table with the client's current guild list. */
-export async function syncAllBotGuilds(client) {
+export async function syncAllBotGuilds(client, { primary = true } = {}) {
   for (const g of client.guilds.cache.values()) await syncBotGuild(g);
-  const ids = [...client.guilds.cache.keys()];
+  if (!primary) return; // only one shard runs the "mark departed" reconcile
+  let ids = [...client.guilds.cache.keys()];
+  if (client.shard) {
+    const perShard = await client.shard.broadcastEval((c) => [...c.guilds.cache.keys()]).catch(() => [ids]);
+    ids = [...new Set(perShard.flat())];
+  }
   if (ids.length)
     await query(
       "UPDATE bot_guilds SET removed_at=$2 WHERE guild_id <> ALL($1::text[]) AND removed_at IS NULL",

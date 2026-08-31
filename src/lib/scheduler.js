@@ -41,6 +41,7 @@ async function runLoa(client) {
 
 async function runAutohints(client) {
   for (const h of await dueAutohints()) {
+    if (client.guilds.cache.size && !client.guilds.cache.has(h.guild_id)) continue; // another shard owns it
     const servers = await getServers(h.guild_id);
     // null server_id → every connected server; otherwise just the one it targets.
     const targets = h.server_id ? servers.filter((s) => String(s.id) === String(h.server_id)) : servers;
@@ -115,27 +116,30 @@ async function runGuildPurge() {
   }
 }
 
-export function startScheduler(client) {
+export function startScheduler(client, { primary = true } = {}) {
   if (timer) return;
-  // Fast loop: time-sensitive, cheap, DB-filtered work.
+  // Fast loop: time-sensitive, cheap, DB-filtered work. runLoa/runReminders mutate globally,
+  // so under sharding only the primary shard runs them (revisit with broadcastEval delivery
+  // if the bot is ever actually sharded). runAutohints filters to this shard's guilds.
   const tick = async () => {
-    await runLoa(client).catch((e) => console.error("scheduler loa:", e.message));
+    if (primary) await runLoa(client).catch((e) => console.error("scheduler loa:", e.message));
     await runAutohints(client).catch((e) => console.error("scheduler autohints:", e.message));
-    await runReminders(client).catch((e) => console.error("scheduler reminders:", e.message));
+    if (primary) await runReminders(client).catch((e) => console.error("scheduler reminders:", e.message));
   };
   timer = setInterval(() => tick().catch(() => {}), 30_000);
   timer.unref?.();
   setTimeout(() => tick().catch(() => {}), 8000);
 
-  // Slow loop: the weekly report does per-user stat queries + a send per guild, so it gets
-  // its own cadence and can never stretch the 30s tick when many guilds qualify at once.
-  const slowTick = async () => {
-    await runWeeklyQuota(client).catch((e) => console.error("scheduler quota:", e.message));
-    await runGuildPurge().catch((e) => console.error("scheduler purge:", e.message));
-  };
-  quotaTimer = setInterval(slowTick, 5 * 60_000);
-  quotaTimer.unref?.();
-  setTimeout(slowTick, 20_000);
+  // Slow loop: weekly report + the 30-day guild purge. Primary-only.
+  if (primary) {
+    const slowTick = async () => {
+      await runWeeklyQuota(client).catch((e) => console.error("scheduler quota:", e.message));
+      await runGuildPurge().catch((e) => console.error("scheduler purge:", e.message));
+    };
+    quotaTimer = setInterval(slowTick, 5 * 60_000);
+    quotaTimer.unref?.();
+    setTimeout(slowTick, 20_000);
+  }
 
-  console.log("Scheduler running (LOA / autohints / reminders / weekly quota)");
+  console.log(`Scheduler running${primary ? "" : " (secondary shard — LOA/reminders/purge on primary)"}`);
 }

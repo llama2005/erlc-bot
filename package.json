@@ -4,7 +4,7 @@
   "description": "Modular Discord command bot (slash + prefix) with typed args, rate limiting, per-guild config, and an AI command.",
   "main": "src/index.js",
   "scripts": {
-    "start": "node src/index.js",
+    "start": "node src/start.js",
     "bot": "node src/index.js",
     "web": "node web/server.js",
     "dev": "node --watch src/index.js"
