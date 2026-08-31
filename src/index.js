@@ -1,3 +1,4 @@
+import http from "node:http";
 import { Client, Events, GatewayIntentBits, Partials, AuditLogEvent, EmbedBuilder, PermissionFlagsBits } from "discord.js";
 import { config, requireConfig } from "./config.js";
 import { pool, initSchema } from "./lib/pg.js";
@@ -139,6 +140,27 @@ client.on(Events.InteractionCreate, (interaction) => {
 client.on(Events.Error, (e) => console.error("Client error:", e));
 client.on(Events.ShardError, (e) => console.error("Shard error:", e));
 process.on("unhandledRejection", (e) => console.error("Unhandled rejection:", e));
+
+// Optional health endpoint for uptime monitors (Render workers have no port by default).
+if (process.env.HEALTHCHECK_PORT) {
+  const version = (process.env.RENDER_GIT_COMMIT || "").slice(0, 7) || "dev";
+  http
+    .createServer((req, res) => {
+      if (req.url !== "/healthz") return res.writeHead(404).end();
+      const ready = client.isReady();
+      res.writeHead(ready ? 200 : 503, { "content-type": "application/json" });
+      res.end(
+        JSON.stringify({
+          ok: ready,
+          guilds: client.guilds.cache.size,
+          wsPing: Math.round(client.ws.ping),
+          uptime: Math.round(process.uptime()),
+          version,
+        }),
+      );
+    })
+    .listen(Number(process.env.HEALTHCHECK_PORT), () => console.log(`Health endpoint on :${process.env.HEALTHCHECK_PORT}/healthz`));
+}
 
 for (const sig of ["SIGINT", "SIGTERM"]) {
   process.once(sig, async () => {

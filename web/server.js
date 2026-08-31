@@ -5,7 +5,7 @@ import cookieParser from "cookie-parser";
 import crypto from "node:crypto";
 
 import { config, requireConfig } from "../src/config.js";
-import { initSchema } from "../src/lib/pg.js";
+import { initSchema, pool } from "../src/lib/pg.js";
 import { refreshGuildConfig, setGuildConfig, startConfigSync } from "../src/lib/guildConfig.js";
 import {
   getServers,
@@ -127,6 +127,19 @@ app.get("/auth/callback", async (req, res) => {
 app.get("/auth/logout", (req, res) => {
   clearSession(res);
   res.redirect("/");
+});
+
+// ---- health check (public, unlogged) ----
+const VERSION = (process.env.RENDER_GIT_COMMIT || "").slice(0, 7) || "dev";
+app.get("/healthz", async (_req, res) => {
+  let db = false;
+  try {
+    await Promise.race([pool.query("SELECT 1"), new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), 1000))]);
+    db = true;
+  } catch {
+    /* db down */
+  }
+  res.status(db ? 200 : 503).json({ ok: db, uptime: Math.round(process.uptime()), version: VERSION, db });
 });
 
 // ---- landing ----
