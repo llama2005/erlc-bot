@@ -1,7 +1,7 @@
 import { splitPlayer } from "./erlc.js";
 import { getGuildConfig } from "./guildConfig.js";
 import { query } from "./pg.js";
-import { getLinkByRoblox } from "./links.js";
+import { resolveRobloxLink } from "./resolveLink.js";
 import { userByUsername } from "./roblox.js";
 import { createCase } from "./cases.js";
 import { subjectStats } from "./cases.js";
@@ -26,7 +26,7 @@ async function resolveTarget(rawName, players) {
 /** Resolve the staff member who ran the command to a moderator identity. */
 async function resolveModerator(entryPlayer) {
   const { name, id } = splitPlayer(entryPlayer);
-  const link = id ? await getLinkByRoblox(id).catch(() => null) : null;
+  const link = id ? await resolveRobloxLink(id).catch(() => null) : null;
   return link
     ? { moderatorId: link.discord_id, moderatorTag: `${name} (in-game)` }
     : { moderatorId: id || name, moderatorTag: `${name} (in-game)` };

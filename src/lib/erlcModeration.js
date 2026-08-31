@@ -1,6 +1,6 @@
 import { erlc, splitPlayer, ErlcError } from "./erlc.js";
 import { userById, userByUsername } from "./roblox.js";
-import { getLinkByDiscord } from "./links.js";
+import { resolveDiscordLink } from "./resolveLink.js";
 
 /**
  * Resolve a player reference (in-game name, @name, numeric ID, or "name:id") to a
@@ -16,7 +16,7 @@ export async function resolvePlayer(key, input) {
   let linkedId = null;
   let searchName = raw;
   if (discordId) {
-    const link = await getLinkByDiscord(discordId);
+    const link = await resolveDiscordLink(discordId);
     if (!link) return { unlinkedDiscordId: discordId };
     linkedId = link.roblox_id;
     searchName = link.roblox_name;

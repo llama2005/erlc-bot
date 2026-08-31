@@ -1,6 +1,6 @@
 import { EmbedBuilder, time } from "discord.js";
 import { COLORS } from "../../lib/style.js";
-import { getLinkByDiscord } from "../../lib/links.js";
+import { resolveDiscordLink } from "../../lib/resolveLink.js";
 
 export default {
   name: "userinfo",
@@ -14,7 +14,7 @@ export default {
     const m = ctx.args.user ?? (await ctx.guild.members.fetch(ctx.author.id).catch(() => null));
     if (!m) return ctx.reply("Couldn't find that member.");
     const u = m.user;
-    const link = await getLinkByDiscord(u.id);
+    const link = await resolveDiscordLink(u.id, ctx.guild?.id);
     const roles = m.roles.cache.filter((r) => r.name !== "@everyone").sort((a, b) => b.position - a.position);
 
     const embed = new EmbedBuilder()

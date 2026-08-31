@@ -2,7 +2,7 @@ import { one, query } from "../../lib/pg.js";
 import { registerComponent } from "../../lib/components.js";
 import { resolveSendable } from "../../lib/modlog.js";
 import { hasPermissionInteraction } from "../../lib/permissions.js";
-import { getLinkByDiscord } from "../../lib/links.js";
+import { resolveDiscordLink } from "../../lib/resolveLink.js";
 import { userByUsername } from "../../lib/roblox.js";
 import { getSubjectCases } from "../../lib/cases.js";
 import { createCase } from "../../lib/cases.js";
@@ -102,7 +102,7 @@ export default {
 
     let robloxId = null;
     let robloxName = null;
-    const link = await getLinkByDiscord(ctx.author.id);
+    const link = await resolveDiscordLink(ctx.author.id, ctx.guild.id);
     if (link) {
       robloxId = link.roblox_id;
       robloxName = link.roblox_name;

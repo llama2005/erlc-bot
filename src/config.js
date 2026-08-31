@@ -51,6 +51,9 @@ export const config = {
     // The bot's PRC global API key (app identity). Shared across all tenants — one bucket.
     globalKey: env("ERLC_GLOBAL_KEY"),
   },
+
+  sentryDsn: env("SENTRY_DSN"),
+  bloxlinkApiKey: env("BLOXLINK_API_KEY"),
 };
 
 /** Throw if a required var is missing. Call from an entry point, not at import. */

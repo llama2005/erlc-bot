@@ -1,6 +1,6 @@
 import { erlc, splitPlayer } from "./erlc.js";
 import { getGuildConfig } from "./guildConfig.js";
-import { getLinkByRoblox } from "./links.js";
+import { resolveRobloxLink } from "./resolveLink.js";
 import { startShift, endShift } from "./shifts.js";
 import { logShiftEvent } from "./shiftLog.js";
 import { applyShiftRole } from "./shiftRole.js";
@@ -33,7 +33,7 @@ export async function handleIngameShifts(client, guildId, server, entries) {
     if (!isIn && !isOut) continue;
 
     const { name, id } = splitPlayer(e.Player);
-    const link = id ? await getLinkByRoblox(id).catch(() => null) : null;
+    const link = id ? await resolveRobloxLink(id).catch(() => null) : null;
     if (!link?.discord_id) {
       await pm(server, name, "Link your Discord with /verify first, then you can clock in here.").catch(() => {});
       continue;

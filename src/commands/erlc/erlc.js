@@ -1,7 +1,7 @@
 import { EmbedBuilder, time } from "discord.js";
 import { erlc, splitPlayer, ErlcError } from "../../lib/erlc.js";
 import { usersByIds, headshotUrl } from "../../lib/roblox.js";
-import { getLinkByRoblox } from "../../lib/links.js";
+import { resolveRobloxLink } from "../../lib/resolveLink.js";
 import { getPublicIp } from "../../lib/publicIp.js";
 import { hasPermission } from "../../lib/permissions.js";
 import { resolveErlcCommand, catalogByTier, TIER_NODE } from "../../lib/erlcCommands.js";
@@ -114,7 +114,7 @@ export default {
         if (!p) return ctx.reply({ content: `**${ctx.args.player}** isn't in the server right now.`, ephemeral: true });
 
         const who = splitPlayer(p.Player);
-        const link = await getLinkByRoblox(who.id);
+        const link = await resolveRobloxLink(who.id, ctx.guild?.id);
         const veh = (Array.isArray(vehicles) ? vehicles : []).find((v) => v.Owner && who.name.toLowerCase().startsWith(v.Owner.toLowerCase()));
 
         const embed = new EmbedBuilder()

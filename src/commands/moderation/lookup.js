@@ -2,7 +2,7 @@ import { EmbedBuilder, time } from "discord.js";
 import { resolvePlayer } from "../../lib/erlcModeration.js";
 import { lookup as robloxLookup } from "../../lib/roblox.js";
 import { getSubjectCases, subjectStats } from "../../lib/cases.js";
-import { getLinkByRoblox } from "../../lib/links.js";
+import { resolveRobloxLink } from "../../lib/resolveLink.js";
 import { COLORS, actionEmoji, err } from "../../lib/style.js";
 import { erlcKeyOrNull, PLAYER_ARG } from "./_shared.js";
 
@@ -28,7 +28,7 @@ export default {
       robloxLookup(target.id).catch(() => null),
       getSubjectCases(ctx.guild.id, "roblox", target.id),
       subjectStats(ctx.guild.id, "roblox", target.id),
-      getLinkByRoblox(target.id),
+      resolveRobloxLink(target.id),
     ]);
 
     const createdMs = rblx?.created ? new Date(rblx.created).getTime() : null;

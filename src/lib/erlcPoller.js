@@ -4,7 +4,7 @@ import { erlc, splitPlayer, ErlcError } from "./erlc.js";
 import { getGuildConfig, ensureGuildConfig } from "./guildConfig.js";
 import { getServers } from "./erlcServers.js";
 import { resolveChannel, resolveSendable } from "./modlog.js";
-import { getLinkByRoblox } from "./links.js";
+import { resolveRobloxLink } from "./resolveLink.js";
 import { autologCommandEntries } from "./ingameAutolog.js";
 import { handleIngameShifts } from "./ingameShifts.js";
 import { COLORS, EMOJI } from "./style.js";
@@ -25,7 +25,7 @@ const rblxLink = (name, id) => (id ? `[${name}](https://www.roblox.com/users/${i
 
 async function playerRef(entry) {
   const { name, id } = splitPlayer(entry);
-  const link = id ? await getLinkByRoblox(id).catch(() => null) : null;
+  const link = id ? await resolveRobloxLink(id).catch(() => null) : null;
   return `${rblxLink(name, id)}${link ? ` (<@${link.discord_id}>)` : ""}`;
 }
 
