@@ -53,7 +53,7 @@ hr { border: 0; border-top: 1px solid var(--border-soft); margin: 20px 0; }
   border-bottom: 1px solid var(--border-soft);
 }
 .topbar .brand { display: flex; align-items: center; gap: 9px; font-weight: 650; color: var(--text); font-size: .98rem; }
-.topbar .brand img { width: 24px; height: 24px; border-radius: 7px; }
+.topbar .brand img { width: 22px; height: 22px; object-fit: contain; }
 .topbar .spacer { flex: 1; }
 .topbar nav { display: flex; align-items: center; gap: 6px; }
 .topbar nav a { padding: 6px 10px; border-radius: var(--radius-sm); color: var(--text-dim); font-weight: 500; }
@@ -192,7 +192,7 @@ table.grid tr.voided .type-badge { text-decoration: line-through; }
 
 /* ---------- landing ---------- */
 .hero { text-align: center; padding: 64px 0 48px; }
-.hero-logo { width: 96px; height: 96px; border-radius: 22px; margin-bottom: 20px; box-shadow: var(--shadow); }
+.hero-logo { width: 104px; height: 104px; margin-bottom: 18px; filter: drop-shadow(0 6px 28px rgba(120, 90, 255, 0.35)); }
 .hero h1 { font-size: 2.6rem; letter-spacing: -1px; line-height: 1.15; }
 .hero p.lead { font-size: 1.1rem; color: var(--text-dim); max-width: 620px; margin: 14px auto 30px; }
 .hero .cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
