@@ -1,4 +1,4 @@
-import { Client, Events, GatewayIntentBits, Partials, ActivityType, AuditLogEvent, EmbedBuilder, PermissionFlagsBits } from "discord.js";
+import { Client, Events, GatewayIntentBits, Partials, AuditLogEvent, EmbedBuilder, PermissionFlagsBits } from "discord.js";
 import { config, requireConfig } from "./config.js";
 import { pool, initSchema } from "./lib/pg.js";
 import { CommandManager } from "./lib/CommandManager.js";
@@ -11,6 +11,7 @@ import { warmErlcServers, startErlcServerSync, pruneErlcServerCache } from "./li
 import { registerExternalModlog } from "./lib/externalModlog.js";
 import { prunePlayerCache } from "./lib/autocomplete.js";
 import { syncBotGuild, removeBotGuild, syncAllBotGuilds } from "./lib/botGuilds.js";
+import { startPresence, bumpPresence } from "./lib/presence.js";
 
 requireConfig("DISCORD_TOKEN", "ANTHROPIC_API_KEY", "DATABASE_URL");
 await initSchema();
@@ -38,10 +39,7 @@ client.manager = manager;
 client.once(Events.ClientReady, async (c) => {
   console.log(`Logged in as ${c.user.tag}`);
   console.log(`In ${c.guilds.cache.size} server(s)`);
-  c.user.setPresence({
-    status: "online",
-    activities: [{ name: `${config.defaultPrefix}help`, type: ActivityType.Listening }],
-  });
+  startPresence(c); // "Watching N guilds and M users!" — refreshed on join/leave + every 10m
 
   getPublicIp().then((ip) => ip && console.log(`Public IP: ${ip} (allowlist at https://api.erlc.gg/server-owners for in-game commands)`));
 
@@ -110,9 +108,11 @@ client.on(Events.GuildCreate, (guild) => {
   ensureGuildConfig(guild.id).catch(() => {});
   syncBotGuild(guild).catch(() => {});
   welcomeGuild(guild).catch((e) => console.error("welcome:", e.message));
+  bumpPresence(client);
 });
 client.on(Events.GuildDelete, (guild) => {
   removeBotGuild(guild.id).catch(() => {});
+  bumpPresence(client);
   const active = [...client.guilds.cache.keys()];
   pruneGuildConfigCache(active);
   prunePermCache(active);
