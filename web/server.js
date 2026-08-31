@@ -75,6 +75,7 @@ app.locals.ago = (ms) => {
 };
 app.locals.who = (names, id) => (id ? names.get(String(id)) || `user …${String(id).slice(-4)}` : "—");
 app.locals.botName = config.botName;
+app.locals.baseUrl = BASE;
 d.botIdentity().then((u) => {
   app.locals.botAvatar = d.botAvatarUrl(u) || "";
   if (u?.username) app.locals.botName = u.username;
