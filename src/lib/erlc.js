@@ -116,6 +116,54 @@ async function call(path, { key, method = "GET", body } = {}) {
   return data;
 }
 
+// ---- GET cache + in-flight dedup ---------------------------------------------
+// One PRC call should feed every command/poller/dashboard read that wants the same
+// resource in a short window — protects the shared global key. Single-process; when
+// sharding lands each shard keeps its own cache (its own guilds).
+const getCache = new Map(); // `${key} ${path}` -> { data, expires, inflight }
+
+function ttlFor(path) {
+  if (path === "/server" || path === "/server/players") return 6_000;
+  if (/logs$|modcalls$/.test(path)) return 12_000;
+  return 8_000;
+}
+
+function bustServer(key) {
+  for (const p of ["/server", "/server/players", "/server/staff", "/server/queue"]) getCache.delete(`${key} ${p}`);
+}
+
+async function cachedCall(path, key) {
+  const k = `${key} ${path}`;
+  const hit = getCache.get(k);
+  if (hit?.inflight) return hit.inflight;
+  if (hit && hit.expires > Date.now()) {
+    try {
+      return structuredClone(hit.data);
+    } catch {
+      return hit.data;
+    }
+  }
+  const inflight = call(path, { key });
+  getCache.set(k, { inflight });
+  try {
+    const data = await inflight;
+    getCache.set(k, { data, expires: Date.now() + ttlFor(path) });
+    try {
+      return structuredClone(data);
+    } catch {
+      return data;
+    }
+  } catch (err) {
+    getCache.delete(k); // never cache failures
+    throw err;
+  }
+}
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of getCache) if (!v.inflight && (v.expires ?? 0) < now) getCache.delete(k);
+}, 60_000).unref?.();
+
 /** "cool_noah310110:2354532835" -> { name, id } */
 export function splitPlayer(entry) {
   if (typeof entry !== "string") return { name: String(entry ?? "?"), id: null };
@@ -125,16 +173,16 @@ export function splitPlayer(entry) {
 }
 
 export const erlc = {
-  server: (key) => call("/server", { key }),
-  players: (key) => call("/server/players", { key }),
-  queue: (key) => call("/server/queue", { key }),
-  staff: (key) => call("/server/staff", { key }),
-  joinLogs: (key) => call("/server/joinlogs", { key }),
-  killLogs: (key) => call("/server/killlogs", { key }),
-  commandLogs: (key) => call("/server/commandlogs", { key }),
-  modCalls: (key) => call("/server/modcalls", { key }),
-  bans: (key) => call("/server/bans", { key }),
-  vehicles: (key) => call("/server/vehicles", { key }),
+  server: (key) => cachedCall("/server", key),
+  players: (key) => cachedCall("/server/players", key),
+  queue: (key) => cachedCall("/server/queue", key),
+  staff: (key) => cachedCall("/server/staff", key),
+  joinLogs: (key) => cachedCall("/server/joinlogs", key),
+  killLogs: (key) => cachedCall("/server/killlogs", key),
+  commandLogs: (key) => cachedCall("/server/commandlogs", key),
+  modCalls: (key) => cachedCall("/server/modcalls", key),
+  bans: (key) => cachedCall("/server/bans", key),
+  vehicles: (key) => cachedCall("/server/vehicles", key),
 
   /** Queue an in-game command; resolves once it has been sent (respects the 1/5s limit). */
   command(key, command) {
@@ -142,6 +190,7 @@ export const erlc = {
     if (!cmd) throw new ErlcError("The command must be a non-empty string.");
     return enqueueCommand(key, async () => {
       await call("/server/command", { key, method: "POST", body: { command: cmd } });
+      bustServer(key); // a command likely changed server/player state
       return true;
     });
   },
