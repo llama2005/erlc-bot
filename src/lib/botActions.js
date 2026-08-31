@@ -7,8 +7,22 @@ import { one, many, query } from "./pg.js";
 const cache = new Map(); // `${userId}:${guildId}` -> { value, expires }
 const TTL = 60_000;
 
+// Global short-circuit: the gate runs on every command, but almost every server never
+// uses it. Track whether ANY unacknowledged lock exists so the common case is free.
+let anyActive = null; // null = unknown, then boolean
+let anyActiveCheckedAt = 0;
+async function refreshAnyActive() {
+  if (anyActive !== null && Date.now() - anyActiveCheckedAt < 5 * 60_000) return anyActive;
+  const r = await one("SELECT 1 FROM bot_actions WHERE type='lock' AND acknowledged_at IS NULL LIMIT 1").catch(() => ({}));
+  anyActive = !!r;
+  anyActiveCheckedAt = Date.now();
+  return anyActive;
+}
+
 /** The action currently blocking this user here, or null. */
 export async function pendingActionFor(userId, guildId) {
+  if (anyActive === false && Date.now() - anyActiveCheckedAt < 5 * 60_000) return null;
+  if (!(await refreshAnyActive())) return null;
   const k = `${userId}:${guildId || ""}`;
   const hit = cache.get(k);
   if (hit && hit.expires > Date.now()) return hit.value;
@@ -38,6 +52,10 @@ export async function createAction({ guildId, targetId, type, reason, createdBy,
   );
   for (const url of proof.filter(Boolean)) await query("INSERT INTO bot_action_proof (action_id, url) VALUES ($1,$2)", [row.id, url]);
   forgetAction(targetId, guildId);
+  if (type === "lock") {
+    anyActive = true; // a new lock exists — re-enable the gate's per-user checks
+    anyActiveCheckedAt = Date.now();
+  }
   return row;
 }
 

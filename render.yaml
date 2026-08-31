@@ -24,8 +24,16 @@ services:
         sync: false
       - key: OWNER_IDS
         sync: false
+      # --- recommended / optional (add in the Render dashboard, all safe to leave unset) ---
+      # - key: SENTRY_DSN        # error reporting + the in-Discord "Report a problem" button
+      # - key: BLOXLINK_API_KEY  # resolve accounts linked via Bloxlink, not just our /verify
+      # - key: ERLC_GLOBAL_KEY   # PRC global API key (approved apps) — raises rate limits
+      # - key: SHARDING          # set to 1 only past ~2000 guilds
+      #
       # NODE_ENV=production disables the shared ERLC_KEY fallback and forces global slash
       # registration. Do not add ERLC_KEY / DEV_GUILD_ID here — they're dev-instance only.
+      # Allowlist ALL of this service's Outbound IP Addresses (Settings tab) at
+      # https://api.erlc.gg/server-owners or in-game :commands will fail.
 
   # --- the web dashboard ---
   - type: web
@@ -52,3 +60,4 @@ services:
         generateValue: true
       - key: DASHBOARD_URL
         sync: false # set to the dashboard's own https URL once Render assigns it
+      # - key: SENTRY_DSN  # optional — same DSN as the worker

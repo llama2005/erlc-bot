@@ -25,7 +25,9 @@ const isLocal = /@(localhost|127\.0\.0\.1)/.test(rawUrl);
 export const pool = new pg.Pool({
   connectionString: cleanUrl,
   ssl: isLocal || !rawUrl ? false : { rejectUnauthorized: false },
-  max: Number(process.env.PG_POOL_MAX || 10),
+  max: Number(process.env.PG_POOL_MAX || 15),
+  connectionTimeoutMillis: 10_000, // fail fast if the pool is exhausted rather than hanging
+  statement_timeout: 30_000, // kill a runaway query instead of holding a connection forever
 });
 
 pool.on("error", (err) => console.error("pg pool error:", err.message));
@@ -375,6 +377,10 @@ async function oneTime(key, sql) {
   await pool.query("INSERT INTO kv_flags (key) VALUES ($1) ON CONFLICT DO NOTHING", [key]);
   console.log(`one-time migration applied: ${key}`);
 }
+
+/** Read a kv_flags marker (for one-time work done in JS, not SQL). */
+export const kvFlagSet = async (key) => (await pool.query("SELECT 1 FROM kv_flags WHERE key=$1", [key])).rowCount > 0;
+export const setKvFlag = (key) => pool.query("INSERT INTO kv_flags (key) VALUES ($1) ON CONFLICT DO NOTHING", [key]);
 
 /**
  * Subscribe to a Postgres NOTIFY channel on a dedicated connection.

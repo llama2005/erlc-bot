@@ -15,6 +15,7 @@ import { ensureGuildConfig } from "./guildConfig.js";
 import { requirePermission } from "./permissions.js";
 import { DUTY_NODES, reportOffDuty } from "./dutyWatch.js";
 import { logCommand } from "./modlog.js";
+import { kvFlagSet, setKvFlag } from "./pg.js";
 import { captureError } from "./sentry.js";
 import { feedbackButton } from "./feedback.js";
 import { gateCheck, gateReply } from "./ackGate.js";
@@ -126,15 +127,19 @@ export class CommandManager {
   }
 
   /**
-   * A guild the bot was in before it switched to global registration still carries a
-   * guild-scoped copy of every command — users see each command twice. Sweep those.
-   * `set([])` on a guild with none is skipped (we check first), so after the one-time
-   * cleanup this costs one cheap fetch per guild at boot. Skipped past ~200 guilds:
-   * at that scale the single-guild registration path never applied.
+   * A guild the bot was in *before* it switched to global registration still carries a
+   * guild-scoped copy of every command — users see each command twice. Sweep those once,
+   * ever (tracked in kv_flags): new guilds never receive guild-scoped commands, so the set
+   * that needs fixing is fixed. Skipped past ~200 guilds — the old single-guild path never
+   * applied at that scale, and a 200-request sweep on every boot isn't worth it.
    */
   async clearGuildScopedCommands() {
+    if (await kvFlagSet("guild_command_sweep_done")) return;
     const guilds = [...this.client.guilds.cache.values()];
-    if (guilds.length > 200) return;
+    if (guilds.length > 200) {
+      await setKvFlag("guild_command_sweep_done");
+      return;
+    }
     let cleared = 0;
     for (const guild of guilds) {
       try {
@@ -148,6 +153,7 @@ export class CommandManager {
       }
     }
     if (cleared) console.log(`Cleared guild-scoped commands in ${cleared} guild(s).`);
+    await setKvFlag("guild_command_sweep_done");
   }
 
   // ---- dispatch ----

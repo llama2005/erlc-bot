@@ -2,6 +2,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import express from "express";
 import cookieParser from "cookie-parser";
+import { rateLimit } from "express-rate-limit";
 import crypto from "node:crypto";
 
 import { config, requireConfig } from "../src/config.js";
@@ -56,11 +57,18 @@ await startFlagSync().catch((e) => console.error("flag sync setup failed:", e.me
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
+app.set("trust proxy", 1); // Render/Cloudflare — needed for correct client IPs in rate limiting
 app.set("view engine", "ejs");
 app.set("views", path.join(here, "views"));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use("/static", express.static(path.join(here, "public")));
+
+const limit = (max, windowMs = 60_000) =>
+  rateLimit({ windowMs, max, standardHeaders: true, legacyHeaders: false, skip: (req) => req.path === "/healthz" });
+app.use("/auth", limit(20)); // OAuth start/callback/logout
+app.use(["/dashboard"], (req, res, next) => (req.method === "POST" ? limit(40)(req, res, next) : next())); // config writes
+app.use(limit(400)); // catch-all safety net
 
 const BASE = (config.links.dashboard || `http://localhost:${config.web.port}`).replace(/\/$/, "");
 const REDIRECT = `${BASE}/auth/callback`;
