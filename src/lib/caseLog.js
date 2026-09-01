@@ -61,6 +61,7 @@ export async function renderCaseEmbed(guild, c) {
     durationText: c.duration_ms ? formatDuration(Number(c.duration_ms)) : undefined,
     createdAt: Number(c.created_at),
     voided: !!c.voided,
+    evidence: c.evidence,
     extraFields: extra,
   });
   if (!roblox) embed.setDescription(`### <@${c.subject_id}>\n\`${c.subject_id}\``);

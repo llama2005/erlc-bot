@@ -43,9 +43,11 @@ export async function statSummary(guildId, robloxId) {
  * → run in-game command(s) → reply + modlog. Reply and modlog use the SAME embed.
  *
  * @param {string} type  a built-in type or a custom mod-type name
- * @param {{reason?: string, ingame?: (target) => string|null}} opts
+ * @param {{reason?: string, ingame?: (target) => string|null, recordOnly?: boolean}} opts
+ *   recordOnly — just write the case: no PM, no in-game command, no "ER:LC connected" check.
  */
-export async function runAction(ctx, type, { reason, ingame } = {}) {
+export async function runAction(ctx, type, { reason, ingame, recordOnly = false } = {}) {
+  if (recordOnly) ingame = null;
   const { server, matched } = await resolveServer(ctx.guild.id, ctx.args?.server);
   const key = server?.api_key ?? null;
 
@@ -70,11 +72,11 @@ export async function runAction(ctx, type, { reason, ingame } = {}) {
   if (!target)
     return ctx.reply({ content: err(`No player or Roblox user matching \`${ctx.args.player}\`.`), ephemeral: true });
 
-  if (REQUIRES_ONLINE.has(type) && !target.online)
+  if (!recordOnly && REQUIRES_ONLINE.has(type) && !target.online)
     return ctx.reply({ content: err(`**${target.name}** isn't in the server right now.`), ephemeral: true });
 
   const modTag = ctx.author.tag ?? ctx.author.username;
-  const willExecute = !ingame ? true : target.online || !REQUIRES_ONLINE.has(type);
+  const willExecute = recordOnly || (!ingame ? true : target.online || !REQUIRES_ONLINE.has(type));
 
   const c = await createCase({
     guildId: ctx.guild.id,
@@ -87,11 +89,12 @@ export async function runAction(ctx, type, { reason, ingame } = {}) {
     moderatorTag: modTag,
     executed: willExecute,
     erlcServerId: server?.id ?? null,
+    evidence: recordOnly ? ctx.args?.proof || null : null,
   });
 
   let notified = null;
   let erlcErr = null; // the actual reason an in-game call failed (IP allowlist, rate limit, …)
-  if (key && SENDS_PM.has(type) && target.online) {
+  if (!recordOnly && key && SENDS_PM.has(type) && target.online) {
     try {
       await erlc.command(key, `:pm ${target.name} ${notifyText(type, { reason, moderatorTag: modTag, caseNumber: c.case_number })}`);
       notified = true;
@@ -148,7 +151,7 @@ export async function runAction(ctx, type, { reason, ingame } = {}) {
   const headshot = await headshotUrl(target.id).catch(() => null);
   const history = await statSummary(ctx.guild.id, target.id);
   const notes = [];
-  if (!target.online) notes.push("player offline");
+  if (!recordOnly && !target.online) notes.push("player offline");
   if ((notified === false || (cmd && !executed)) && erlcErr) {
     notes.push(`in-game action failed — ${erlcErr.message}`); // e.g. IP not allowlisted, rate limited
   } else {
@@ -166,6 +169,7 @@ export async function runAction(ctx, type, { reason, ingame } = {}) {
       target: { name: target.name, id: target.id, headshot },
       moderator: { id: ctx.author.id, tag: modTag, iconURL: ctx.author.displayAvatarURL?.() },
       extraFields: [{ name: "History", value: history, inline: true }],
+      evidence: c.evidence,
       footer: footerNotes.join(" · ") || undefined,
     });
 

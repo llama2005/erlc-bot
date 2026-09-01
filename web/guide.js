@@ -7,7 +7,7 @@ import { NODES } from "../src/lib/permissions.js";
 // Order + one-line blurb for each command module.
 const MODULES = [
   ["general", "Everyday commands", "Anyone can run these. No setup required."],
-  ["moderation", "ER:LC moderation", "In-game punishments, each one written to a permanent, numbered case log keyed to the Roblox account."],
+  ["moderation", "ER:LC moderation", "Every punishment written to a permanent, numbered case keyed to the Roblox account. Moderate in-game as normal, then /log it — or use /warn /kick /ban /jail to have the bot carry the action out for you."],
   ["erlc", "ER:LC server control", "Talk to your ER:LC private server — status, players, logs, in-game messages, sessions and priority timers."],
   ["discord", "Discord moderation", "Moderate the Discord server itself. Bans/kicks/timeouts done here are logged as cases too."],
   ["shifts", "Shifts & accountability", "Staff clock in/out, leaderboards, weekly quotas and leave-of-absence requests."],

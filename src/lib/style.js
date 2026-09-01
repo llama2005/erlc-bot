@@ -103,6 +103,7 @@ export function caseEmbed(o) {
   if (o.target.headshot) embed.setThumbnail(o.target.headshot);
   if (o.moderator.iconURL) embed.setAuthor({ name: embed.data.author.name, iconURL: o.moderator.iconURL });
   if (o.extraFields?.length) embed.addFields(...o.extraFields);
+  if (o.evidence) embed.addFields({ name: "Evidence", value: String(o.evidence).slice(0, 1024) });
   embed.setFooter({ text: `Case: ${o.caseNumber}${o.footer ? ` · ⚠ ${o.footer}` : ""}` });
   return embed;
 }

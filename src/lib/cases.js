@@ -16,6 +16,7 @@ export async function createCase({
   executed = true,
   erlcServerId = null,
   source = "discord",
+  evidence = null,
 }) {
   return tx(async (c) => {
     const {
@@ -31,8 +32,8 @@ export async function createCase({
     await c.query(
       `INSERT INTO mod_cases
         (guild_id, case_number, platform, subject_id, subject_name, type, reason, duration_ms,
-         moderator_id, moderator_tag, created_at, executed, erlc_server_id, source)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
+         moderator_id, moderator_tag, created_at, executed, erlc_server_id, source, evidence)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
       [
         guildId,
         caseNumber,
@@ -48,6 +49,7 @@ export async function createCase({
         executed,
         erlcServerId,
         source,
+        evidence || null,
       ],
     );
     return (await c.query("SELECT * FROM mod_cases WHERE guild_id=$1 AND case_number=$2", [guildId, caseNumber])).rows[0];

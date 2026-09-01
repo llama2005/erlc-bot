@@ -54,6 +54,7 @@ export default {
         if (link.url) embed.setURL(link.url);
         if (c.duration_ms) embed.addFields({ name: "Duration", value: `${Math.round(c.duration_ms / 60000)}m`, inline: true });
         if (c.platform === "roblox") embed.addFields({ name: "Executed in-game", value: c.executed ? "yes" : "no", inline: true });
+        if (c.evidence) embed.addFields({ name: "Evidence", value: String(c.evidence).slice(0, 1024) });
         if (c.voided) embed.addFields({ name: "Voided", value: `by <@${c.voided_by}>${c.voided_reason ? ` — ${c.voided_reason}` : ""}` });
         await ctx.reply({ embeds: [embed] });
       },
