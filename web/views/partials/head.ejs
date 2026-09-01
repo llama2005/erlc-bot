@@ -28,6 +28,7 @@
   <nav>
     <% if (typeof user !== "undefined" && user) { %>
       <a href="/dashboard"><span>Dashboard</span></a>
+      <% if (typeof isOperator === "function" && isOperator(user)) { %><a href="/admin"><span>Admin</span></a><% } %>
       <span class="user-chip"><img src="<%= avatarUrl(user) %>" alt=""><span><%= user.username %></span></span>
       <a href="/auth/logout" class="btn ghost sm">Log out</a>
     <% } else { %>

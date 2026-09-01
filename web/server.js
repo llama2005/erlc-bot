@@ -21,6 +21,8 @@ import {
 } from "../src/lib/erlcServers.js";
 import { getBotGuild, listBotGuilds } from "../src/lib/botGuilds.js";
 import { FLAGS, isEnabled, setFlag, clearFlag, listFlagRows, startFlagSync } from "../src/lib/flags.js";
+import { createAction, acknowledgeAction } from "../src/lib/botActions.js";
+import { isOperator, adminOverview, adminGuilds, activeLocks } from "./admin.js";
 import {
   getRecentCases,
   getCase,
@@ -88,6 +90,7 @@ app.locals.ago = (ms) => {
 app.locals.who = (names, id) => (id ? names.get(String(id)) || `user …${String(id).slice(-4)}` : "—");
 app.locals.botName = config.botName;
 app.locals.baseUrl = BASE;
+app.locals.isOperator = (user) => isOperator(user?.id);
 d.botIdentity().then((u) => {
   app.locals.botAvatar = d.botAvatarUrl(u) || "";
   if (u?.username) app.locals.botName = u.username;
@@ -199,16 +202,23 @@ app.get("/dashboard", requireAuth, async (req, res) => {
   res.render("dashboard", { user: req.user, guilds: manageable, inviteUrl: d.inviteUrl() });
 });
 
+function requireOperator(req, res, next) {
+  if (!isOperator(req.user?.id))
+    return res.status(404).render("error", { user: req.user, message: "Not found." });
+  next();
+}
+
 async function requireGuildAdmin(req, res, next) {
   const guildId = req.params.guildId;
+  const op = isOperator(req.user?.id); // bot operators can open any guild's dashboard
   // Fast pre-filter from the (possibly stale) OAuth session…
   const g = (req.user.guilds || []).find((x) => x.id === guildId);
-  if (!g || !d.canManage(g.permissions))
+  if (!op && (!g || !d.canManage(g.permissions)))
     return res.status(403).render("error", { user: req.user, message: "You don't have Manage Server in that guild." });
   const bg = await getBotGuild(guildId);
   if (!bg) return res.status(404).render("error", { user: req.user, message: "The bot isn't in that server yet." });
   // …then the authoritative live check (5-min cache): current roles, or guild ownership.
-  const live = String(bg.owner_id) === String(req.user.id) || (await d.userManagesGuild(guildId, req.user.id));
+  const live = op || String(bg.owner_id) === String(req.user.id) || (await d.userManagesGuild(guildId, req.user.id));
   if (!live)
     return res.status(403).render("error", { user: req.user, message: "You no longer have Manage Server in that guild." });
   req.cfg = await refreshGuildConfig(guildId); // always fresh from the DB for the dashboard
@@ -742,6 +752,79 @@ app.post("/dashboard/:guildId/banreqs/:id/:decision", requireAuth, requireGuildA
     }
   }
   res.redirect(`/dashboard/${req.guild.id}/banreqs`);
+});
+
+// ---- operator ("ultimate admin") panel ----
+app.get("/admin", requireAuth, requireOperator, async (req, res) => {
+  const [overview, guilds, locks] = await Promise.all([adminOverview(), adminGuilds(req.query.q || ""), activeLocks()]);
+  const ids = [...new Set([...guilds.map((g) => g.owner_id), ...locks.map((l) => l.created_by)].filter(Boolean))].slice(0, 60);
+  const names = ids.length ? await d.userNames(ids).catch(() => new Map()) : new Map();
+  res.render("admin", {
+    user: req.user,
+    overview,
+    guilds,
+    locks,
+    names,
+    q: req.query.q || "",
+    flags: Object.entries(FLAGS).map(([name, meta]) => {
+      const g = listFlagRows().find((r) => r.name === name && r.scope === "global" && r.target === "");
+      return { name, description: meta.description, default: meta.default, global: g ? (g.enabled == null ? `${g.rollout_pct}%` : g.enabled ? "on" : "off") : "—" };
+    }),
+    saved: req.query.saved || "",
+  });
+});
+
+app.post("/admin/flags", requireAuth, requireOperator, async (req, res) => {
+  const { name, action } = req.body;
+  if (FLAGS[name]) {
+    if (action === "on") await setFlag(name, "global", "", { enabled: true });
+    else if (action === "off") await setFlag(name, "global", "", { enabled: false });
+    else if (action === "clear") await clearFlag(name, "global", "");
+    else if (action === "rollout") await setFlag(name, "global", "", { enabled: null, rolloutPct: Math.max(0, Math.min(100, parseInt(req.body.pct, 10) || 0)) });
+  }
+  res.redirect("/admin?saved=flags");
+});
+
+app.post("/admin/locks", requireAuth, requireOperator, async (req, res) => {
+  const targetId = String(req.body.targetId || "").replace(/\D/g, "");
+  if (targetId) {
+    const dur = (req.body.duration || "").trim();
+    const ms = dur ? parseDuration(dur) : null;
+    await createAction({
+      guildId: null,
+      targetId,
+      type: "lock",
+      reason: (req.body.reason || "").slice(0, 500) || null,
+      createdBy: req.user.id,
+      expiresAt: ms ? Date.now() + ms : null,
+      isGlobal: true,
+      proof: [req.body.proof].filter(Boolean),
+    });
+  }
+  res.redirect("/admin?saved=lock");
+});
+
+app.post("/admin/locks/:targetId/lift", requireAuth, requireOperator, async (req, res) => {
+  await acknowledgeAction(String(req.params.targetId).replace(/\D/g, ""), null, { byStaff: true });
+  res.redirect("/admin?saved=unlock");
+});
+
+app.post("/admin/broadcast", requireAuth, requireOperator, async (req, res) => {
+  const text = (req.body.text || "").trim().slice(0, 1800);
+  if (!text) return res.redirect("/admin?saved=broadcast-empty");
+  const rows = await adminGuilds();
+  let sent = 0;
+  for (const row of rows) {
+    const cfg = await refreshGuildConfig(row.guild_id).catch(() => null);
+    const ch = cfg?.modlogChannel;
+    if (!ch) continue;
+    const r = await d.postChannelMessage(ch, {
+      embeds: [{ title: `📣 A message from the ${config.botName} team`, description: text, color: 0x5b6cff }],
+    });
+    if (r.ok) sent++;
+    await new Promise((s) => setTimeout(s, 250)); // gentle
+  }
+  res.redirect(`/admin?saved=broadcast-${sent}`);
 });
 
 app.use((req, res) => res.status(404).render("error", { user: readSession(req), message: "Not found." }));

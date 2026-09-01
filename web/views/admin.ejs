@@ -1,0 +1,107 @@
+<%- include("partials/head", { title: "Admin" }) %>
+<% function nm(id){ return (names && names.get && names.get(String(id))) || ('…' + String(id).slice(-4)); } %>
+
+<div class="page-head">
+  <div><h1>Operator panel</h1><div class="sub">Bot-wide controls. You're seeing this because your ID is in <code>OWNER_IDS</code>.</div></div>
+  <a href="/dashboard" class="btn ghost sm">← Dashboard</a>
+</div>
+<% if (saved) { %><div class="flash">✓ <%= saved.startsWith("broadcast-") ? ("Broadcast sent to " + saved.slice(10) + " server(s).") : ({flags:"Flag updated.",lock:"Lock created.",unlock:"Lock lifted.","broadcast-empty":"Nothing to broadcast."}[saved] || "Saved.") %></div><% } %>
+
+<div class="admin-stats">
+  <div><b><%= overview.stats.guilds.toLocaleString() %></b><span>servers</span></div>
+  <div><b><%= overview.stats.members.toLocaleString() %></b><span>members reached</span></div>
+  <div><b><%= overview.stats.cases.toLocaleString() %></b><span>cases (<%= overview.stats.casesWeek %> this week)</span></div>
+  <div><b><%= overview.stats.shifts.toLocaleString() %></b><span>shifts logged</span></div>
+  <div><b><%= overview.stats.links.toLocaleString() %></b><span>verified users</span></div>
+  <div><b><%= overview.stats.banreqs + overview.stats.appeals + overview.stats.loa %></b><span>pending reviews</span></div>
+  <div><b><%= overview.stats.locks %></b><span>active locks</span></div>
+  <div><b><%= overview.dbMs %>ms</b><span>db · <%= overview.version %> · up <%= Math.floor(overview.uptime/3600) %>h</span></div>
+</div>
+
+<section class="card">
+  <h2>Feature flags <span class="muted">(global)</span></h2>
+  <table class="g-table">
+    <thead><tr><th>Flag</th><th>Default</th><th>Global</th><th>Set</th></tr></thead>
+    <tbody>
+      <% flags.forEach(function(f){ %>
+        <tr>
+          <td><code><%= f.name %></code><br><span class="muted"><%= f.description %></span></td>
+          <td><%= f.default ? "on" : "off" %></td>
+          <td><strong><%= f.global %></strong></td>
+          <td>
+            <form method="post" action="/admin/flags" style="display:flex;gap:4px;flex-wrap:wrap;margin:0">
+              <input type="hidden" name="name" value="<%= f.name %>">
+              <button class="btn sm ok" name="action" value="on">On</button>
+              <button class="btn sm danger" name="action" value="off">Off</button>
+              <button class="btn sm ghost" name="action" value="clear">Default</button>
+              <input type="number" name="pct" min="0" max="100" placeholder="%" style="width:56px;margin:0">
+              <button class="btn sm subtle" name="action" value="rollout">Roll</button>
+            </form>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</section>
+
+<section class="card">
+  <h2>Global locks <span class="muted">(bot access)</span></h2>
+  <form method="post" action="/admin/locks" class="field-grid" style="margin-bottom:12px">
+    <label>User ID <input type="text" name="targetId" required placeholder="123456789012345678"></label>
+    <label>Duration <input type="text" name="duration" placeholder="7d — blank = ack to clear"></label>
+    <label>Reason <input type="text" name="reason" placeholder="why"></label>
+    <label>Proof URL <input type="text" name="proof" placeholder="optional"></label>
+    <button type="submit" class="btn danger">Lock out</button>
+  </form>
+  <% if (!locks.length) { %><p class="muted">No active locks.</p><% } else { %>
+  <table class="g-table">
+    <thead><tr><th>User</th><th>Reason</th><th>By</th><th>Expires</th><th></th></tr></thead>
+    <tbody>
+      <% locks.forEach(function(l){ %>
+        <tr>
+          <td><code><%= l.target_id %></code><%= l.is_global ? "" : " · guild " + l.guild_id %></td>
+          <td><%= l.reason || "—" %><% if (l.proof) { %><br><span class="muted"><%= l.proof %></span><% } %></td>
+          <td><%= nm(l.created_by) %></td>
+          <td><%= l.expires_at ? fmtDate(l.expires_at) : "on acknowledge" %></td>
+          <td><form method="post" action="/admin/locks/<%= l.target_id %>/lift" style="margin:0"><button class="btn sm ghost">Lift</button></form></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+  <% } %>
+</section>
+
+<section class="card">
+  <h2>Broadcast</h2>
+  <p class="muted">Posts an embed to the <strong>mod-log channel</strong> of every server that has one set.</p>
+  <form method="post" action="/admin/broadcast" onsubmit="return confirm('Send to every server\'s mod-log channel?')">
+    <textarea name="text" rows="3" maxlength="1800" placeholder="Message to all servers…" style="width:100%"></textarea>
+    <button type="submit" class="btn">Send broadcast</button>
+  </form>
+</section>
+
+<section class="card">
+  <h2>Servers <span class="muted">(<%= guilds.length %>)</span></h2>
+  <form method="get" action="/admin" style="margin-bottom:10px">
+    <input type="search" name="q" value="<%= q %>" placeholder="name, guild id, or owner id" style="max-width:340px">
+    <button class="btn sm">Search</button>
+  </form>
+  <table class="g-table">
+    <thead><tr><th>Server</th><th>Members</th><th>Owner</th><th>Cases</th><th>ER:LC</th><th>Updated</th><th></th></tr></thead>
+    <tbody>
+      <% guilds.forEach(function(row){ %>
+        <tr>
+          <td><%= row.name || "(unknown)" %><br><span class="muted"><%= row.guild_id %></span></td>
+          <td><%= (row.member_count || 0).toLocaleString() %></td>
+          <td><%= nm(row.owner_id) %></td>
+          <td><%= row.cases %></td>
+          <td><%= row.erlc_servers %></td>
+          <td><%= ago(row.updated_at) %></td>
+          <td><a class="btn sm ghost" href="/dashboard/<%= row.guild_id %>">Open</a></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</section>
+
+<%- include("partials/foot") %>

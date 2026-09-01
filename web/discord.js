@@ -120,6 +120,22 @@ export async function memberNames(guildId, ids) {
   );
   return out;
 }
+/** Resolve a set of Discord user ids to global names (bot token, cached). */
+export async function userNames(ids) {
+  const out = new Map();
+  await Promise.all(
+    [...new Set(ids.filter(Boolean).map(String))].map(async (id) => {
+      const c = nameCache.get(`u:${id}`);
+      if (c && Date.now() - c.at < NAME_TTL) return out.set(id, c.name);
+      const u = await bot(`/users/${id}`).catch(() => null);
+      const name = u ? u.global_name || u.username || `user ${id}` : `user …${id.slice(-4)}`;
+      nameCache.set(`u:${id}`, { name, at: Date.now() });
+      out.set(id, name);
+    }),
+  );
+  return out;
+}
+
 export const postChannelMessage = (channelId, body) =>
   fetch(`${API}/channels/${channelId}/messages`, {
     method: "POST",
