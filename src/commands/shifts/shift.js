@@ -1,6 +1,6 @@
 import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
 import { registerComponent } from "../../lib/components.js";
-import { COLORS, ok, err, EMOJI } from "../../lib/style.js";
+import { COLORS, err, EMOJI } from "../../lib/style.js";
 import { formatDuration, formatDurationLong } from "../../lib/util.js";
 import {
   getActiveShift,
@@ -17,6 +17,21 @@ import { logShiftEvent } from "../../lib/shiftLog.js";
 const WEEK = 7 * 24 * 60 * 60 * 1000;
 
 import { applyShiftRole as toggleShiftRole } from "../../lib/shiftRole.js";
+
+const prettyType = (t) => (!t || t === "default" ? "Default Shift Type" : t.replace(/\b\w/g, (c) => c.toUpperCase()));
+
+/** Green "clocked in" / red "clocked out" confirmation embed. */
+function clockEmbed(kind, shift) {
+  const inn = kind === "in";
+  return new EmbedBuilder()
+    .setColor(inn ? COLORS.clockIn : COLORS.ban)
+    .setDescription(
+      inn
+        ? `${EMOJI.online} Successfully clocked in to '${prettyType(shift.shift_type)}'.`
+        : `${EMOJI.offline} Successfully clocked out of '${prettyType(shift.shift_type)}' — \`${formatDuration(shift.duration_ms)}\` this shift.`,
+    )
+    .setFooter({ text: `ID: ${shift.id}` });
+}
 
 async function panel(guild, userId, username, type = "default") {
   const [active, all, week, trend] = await Promise.all([
@@ -57,21 +72,25 @@ async function panel(guild, userId, username, type = "default") {
 registerComponent("shift", async (interaction, [action, type]) => {
   const { guild, user } = interaction;
   await interaction.deferUpdate();
+  let done = null;
   if (action === "in") {
     const s = await startShift(guild.id, user.id, type || "default");
     if (s) {
       await toggleShiftRole(guild, user.id, true);
       await logShiftEvent(interaction.client, guild.id, { kind: "in", userId: user.id, type: type || "default", shift: s });
+      done = clockEmbed("in", s);
     }
   } else if (action === "out") {
     const s = await endShift(guild.id, user.id);
     if (s) {
       await toggleShiftRole(guild, user.id, false);
       await logShiftEvent(interaction.client, guild.id, { kind: "out", userId: user.id, shift: s });
+      done = clockEmbed("out", s);
     }
   }
   // action === "refresh" just re-renders.
   await interaction.editReply(await panel(guild, user.id, user.username, type || "default"));
+  if (done) await interaction.followUp({ embeds: [done], ephemeral: true }).catch(() => {});
 });
 
 export default {
@@ -104,7 +123,7 @@ export default {
         if (!s) return ctx.reply({ content: err("You're already on duty."), ephemeral: true });
         await toggleShiftRole(ctx.guild, ctx.author.id, true);
         await logShiftEvent(ctx.client, ctx.guild.id, { kind: "in", userId: ctx.author.id, type, shift: s });
-        await ctx.reply(ok(`Clocked in${type !== "default" ? ` (\`${type}\`)` : ""}.`));
+        await ctx.reply({ embeds: [clockEmbed("in", s)] });
       },
     },
 
@@ -116,7 +135,7 @@ export default {
         if (!s) return ctx.reply({ content: err("You're not on duty."), ephemeral: true });
         await toggleShiftRole(ctx.guild, ctx.author.id, false);
         await logShiftEvent(ctx.client, ctx.guild.id, { kind: "out", userId: ctx.author.id, shift: s });
-        await ctx.reply(ok(`Clocked out — this shift: \`${formatDuration(s.duration_ms)}\`.`));
+        await ctx.reply({ embeds: [clockEmbed("out", s)] });
       },
     },
 
