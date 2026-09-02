@@ -1,7 +1,7 @@
 import { EmbedBuilder } from "discord.js";
 import { getGuildConfig } from "./guildConfig.js";
 import { resolveSendable } from "./modlog.js";
-import { COLORS } from "./style.js";
+import { COLORS, EMOJI } from "./style.js";
 import { formatDuration } from "./util.js";
 
 /**
@@ -29,12 +29,12 @@ export async function logShiftEvent(client, guildId, ev) {
   if (ev.kind === "in") {
     embed
       .setColor(COLORS.clockIn)
-      .setTitle("Clocked In")
+      .setTitle(`${EMOJI.online} Clocked In`)
       .setDescription(`<@${ev.userId}> clocked in${ev.type && ev.type !== "default" ? ` as **${ev.type}**` : ""}.`);
     if (ev.adminId) embed.addFields({ name: "Admin", value: `<@${ev.adminId}>`, inline: true });
   } else if (ev.kind === "out") {
     const dur = ev.shift?.duration_ms ? ` — **${formatDuration(ev.shift.duration_ms)}** this shift` : "";
-    embed.setColor(COLORS.clockOut).setTitle("Clocked Out").setDescription(`<@${ev.userId}> clocked out${dur}.`);
+    embed.setColor(COLORS.clockOut).setTitle(`${EMOJI.offline} Clocked Out`).setDescription(`<@${ev.userId}> clocked out${dur}.`);
     if (ev.adminId) embed.addFields({ name: "Admin", value: `<@${ev.adminId}>`, inline: true });
   } else {
     // kind: "admin" — an adjustment made from the shift-admin panel

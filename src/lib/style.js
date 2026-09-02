@@ -2,21 +2,38 @@ import { EmbedBuilder, time } from "discord.js";
 
 // Short confirmations = plain text with a leading tick/cross; richer output = a
 // colour-coded embed.
+//
+// Custom (application-owned) emojis live on the bot app itself, so they render in
+// every guild with no emoji-slot cost. A wrong `name` in `<:name:id>` still renders
+// — Discord resolves by id — but an animated emoji MUST use the `<a:` prefix.
+// Anything without a custom id here falls back to the unicode glyph.
+const CUSTOM = {
+  online: "<:online:1544599519814221834>", // green dot / clocked in
+  offline: "<:offline:1544600435371933756>", // red dot / clocked out
+  clock: "<:clock:1544600626690785322>",
+  idle: "<:idle:1544600718801903616>", // yellow dot
+  tick: "<:tick:1544600513746702376>", // check mark
+  loading: "<a:loading:1544602116964876288>", // animated spinner
+};
+
 export const EMOJI = {
   tick: "✅",
   cross: "❌",
   warn: "⚠️",
   online: "🟢",
   offline: "🔴",
+  idle: "🟡",
   clock: "🕓",
   hammer: "🔨",
   shield: "🛡️",
+  loading: "⌛",
   // Whisp-style field icons — single swap point if a custom emoji set is added later.
   user: "👤",
   id: "🆔",
   folder: "📁",
   reason: "📝",
   pending: "⌛",
+  ...CUSTOM,
 };
 
 export const ok = (msg) => `${EMOJI.tick} ${msg}`;
@@ -148,6 +165,6 @@ export function statusField(state, { byId, at } = {}) {
     : state === "denied" ? `${EMOJI.cross} Denied${by}${when}`
     : state === "ended" ? `🔚 Ended${by}${when}`
     : state === "cancelled" ? `🚫 Cancelled${by}${when}`
-    : `${EMOJI.pending} Awaiting review`;
+    : `${EMOJI.loading} Awaiting review`;
   return { name: "Status", value };
 }
