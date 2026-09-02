@@ -176,6 +176,15 @@ for (const page of ["privacy", "terms"]) {
   );
 }
 
+// ---- features (public) ----
+app.get("/features", (req, res) => {
+  res.render("features", {
+    user: readSession(req),
+    inviteUrl: d.inviteUrl(),
+    support: config.links.support || "",
+  });
+});
+
 // ---- guide (public) ----
 app.get("/guide", async (req, res) => {
   const guide = await getGuideData().catch((e) => {

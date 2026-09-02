@@ -1,0 +1,195 @@
+<%- include("partials/head", { title: "Features" }) %>
+<article class="guide">
+
+  <header class="guide-hero">
+    <h1>Everything Scout does</h1>
+    <p class="lead">
+      The complete feature list. Every part works on its own — run it purely for Discord
+      moderation, purely for shift tracking, or the whole thing. <a href="/guide">Setup guide →</a>
+    </p>
+    <div class="cta">
+      <a href="<%= inviteUrl %>" class="btn big">Add to your server</a>
+      <a href="/guide" class="btn big ghost">How to set it up</a>
+    </div>
+  </header>
+
+  <nav class="guide-toc">
+    <a href="#cases">Case log</a>
+    <a href="#erlc">ER:LC control</a>
+    <a href="#logging">Automatic logging</a>
+    <a href="#discord">Discord moderation</a>
+    <a href="#shifts">Shifts</a>
+    <a href="#loa">Leave of absence</a>
+    <a href="#appeals">Appeals &amp; ban requests</a>
+    <a href="#linking">Roblox linking</a>
+    <a href="#perms">Permissions</a>
+    <a href="#utility">Utilities</a>
+    <a href="#dashboard">Dashboard</a>
+    <a href="#scale">Built for scale</a>
+  </nav>
+
+  <section id="cases">
+    <h2>Permanent case log</h2>
+    <ul>
+      <li>Every warn, kick, ban, jail and note is a <strong>numbered, permanent case</strong> keyed to the Roblox account — survives restarts, name changes and the player leaving.</li>
+      <li><code>/log</code> records a moderation you carried out in-game (no in-game command run) — fast, works while the server is offline, never fails.</li>
+      <li><code>/warn</code> <code>/kick</code> <code>/ban</code> <code>/jail</code> <code>/unban</code> <code>/unjail</code> have the bot carry the action out in-game <em>and</em> log the case.</li>
+      <li>Each case posted to the mod-log carries <strong>Edit reason</strong>, <strong>Change type</strong> and <strong>Void</strong> buttons — the message re-renders itself after an edit.</li>
+      <li><code>/history</code> and <code>/case</code> show a player's full record, cross-referenced across Discord and Roblox.</li>
+      <li>Evidence links attach to a case; a "who edited what" line goes to the command-log channel.</li>
+      <li>Custom moderation types with <code>/modtype</code> — your own labels, colours and default in-game command.</li>
+      <li><strong>Void behaviour is configurable</strong>: hard-delete the case and its log message (default), or keep a greyed-out record for a full audit trail.</li>
+      <li>A reason is <strong>required by default</strong> on punitive actions (un-actions exempt); toggle with <code>/config reason-required</code>.</li>
+      <li><code>--bolo</code> on a kick or ban also files a ban request for senior staff to review.</li>
+    </ul>
+  </section>
+
+  <section id="erlc">
+    <h2>ER:LC server control</h2>
+    <ul>
+      <li><code>/erlc status</code> and <code>/erlc players</code> — live server name, player count, join code and roster.</li>
+      <li>Read <strong>join, kill, command and mod-call logs</strong> on demand: <code>/erlc joinlogs</code> <code>/erlc killlogs</code> <code>/erlc commandlogs</code> <code>/erlc modcalls</code>.</li>
+      <li><code>/erlc bans</code> <code>/erlc vehicles</code> <code>/erlc queue</code> <code>/erlc staff</code> — full server state from Discord.</li>
+      <li>Send in-game messages: <code>/erlc pm</code> <code>/erlc hint</code> <code>/erlc message</code>.</li>
+      <li><strong>Validated command catalog</strong> — <code>/erlc command</code> checks every <code>:</code> command against a mod / admin / owner tier list, blocks the ones that should go through <code>/kick</code> etc., and autocompletes.</li>
+      <li><code>/session</code> — SSU / SSD / vote announcements from a saved template, with a role ping.</li>
+      <li><code>/priority</code> — countdown priority timers announced in-game and in Discord.</li>
+      <li><strong>Multiple ER:LC servers per Discord</strong> — add a main, training and events server; every command takes an optional <code>server:</code> target; the logger posts for each, labelled.</li>
+      <li>Key is validated against ER:LC before it's saved; prefix messages containing it are auto-deleted.</li>
+    </ul>
+  </section>
+
+  <section id="logging">
+    <h2>Automatic logging</h2>
+    <ul>
+      <li>Joins, leaves, kills, mod calls and staff <code>:commands</code> mirrored to Discord <strong>as they happen</strong>, each to its own channel.</li>
+      <li><strong>Server up / down alerts</strong> to a status channel.</li>
+      <li><strong>In-game auto-log</strong> — <code>:kick</code>, <code>:ban</code>, <code>:jail</code> run directly in ER:LC, and warn-PMs (<code>:pm player warn reason</code>), become logged cases with no Discord command needed. Warn keyword is configurable.</li>
+      <li><strong>In-game clock in / out</strong> — staff start and end a shift from inside ER:LC with <code>:pm &lt;name&gt; clockin</code> / <code>clockout</code>; confirmed in-game and by DM.</li>
+      <li><strong>External Discord moderation</strong> — an opt-in listener turns a manual right-click ban / kick / timeout (done outside the bot) into a case too.</li>
+      <li>Mod-call posts ping your staff role.</li>
+    </ul>
+  </section>
+
+  <section id="discord">
+    <h2>Discord moderation</h2>
+    <ul>
+      <li><code>/discord ban</code> <code>/discord kick</code> <code>/discord timeout</code> <code>/discord untimeout</code> <code>/discord unban</code> — moderate the Discord server; every action is logged as a case and the target is DM'd.</li>
+      <li><code>/purge</code> — bulk-delete messages, with an optional user filter.</li>
+      <li>Timeouts record their duration; removing one logs an <code>unmute</code> case.</li>
+    </ul>
+  </section>
+
+  <section id="shifts">
+    <h2>Shifts &amp; activity</h2>
+    <ul>
+      <li><code>!shift</code> — your own shift panel: current-shift duration, all-time and weekly totals, with <strong>Clock in / Clock out / Refresh</strong> buttons.</li>
+      <li>Clocking in or out posts a green / red confirmation and an on-duty role is applied and removed automatically.</li>
+      <li><code>!od</code> — everyone on duty right now, grouped by shift type, longest-on-duty first.</li>
+      <li><code>/shift leaderboard</code> — top staff by time over any window.</li>
+      <li><code>/shift time</code> — logged time for any staff member over a period.</li>
+      <li><code>/shift activity</code> — who did and didn't meet a time requirement.</li>
+      <li><strong>Shift-admin panel</strong> (<code>/shift admin @user</code>) — clock a member in/out, browse their shifts, add / remove / set time on any single shift, change its type, delete one, or wipe all.</li>
+      <li>Custom shift types with <code>/shifttype</code>.</li>
+      <li><strong>Shift-log channel</strong> — every clock-in, clock-out and admin adjustment posted with who did it.</li>
+      <li><strong>Weekly quotas</strong> — set a cases-per-staff and/or shift-time-per-staff target; a met/missed report posts to a channel each week.</li>
+      <li>Off-duty staff command use can be reported to a staff-alert channel.</li>
+    </ul>
+  </section>
+
+  <section id="loa">
+    <h2>Leave of absence</h2>
+    <ul>
+      <li><code>/loa request &lt;duration&gt;</code> — staff request time off; the requester gets a "received" DM.</li>
+      <li>Senior staff approve or deny from the LOA channel or the dashboard — either way the channel message updates and the requester is DM'd with who decided.</li>
+      <li>Future-dated LOAs auto-activate and auto-end on schedule.</li>
+    </ul>
+  </section>
+
+  <section id="appeals">
+    <h2>Appeals &amp; ban requests</h2>
+    <ul>
+      <li><code>/appeal</code> — a banned player submits a ban appeal; it lands in your appeal channel with Approve / Deny buttons.</li>
+      <li><code>/banreq</code> — junior staff submit a ban request for review; duplicates for the same player are suppressed.</li>
+      <li><strong>One-click decisions</strong> — approving an appeal runs <code>:unban</code> and logs the case; approving a ban request runs <code>:ban</code> and logs it.</li>
+      <li>Decisions made on the dashboard sync straight back to the Discord message and post the case to the mod-log.</li>
+      <li>Every embed shows a <strong>Status</strong> field — "Awaiting review" → "Approved by @staff · &lt;time&gt;".</li>
+    </ul>
+  </section>
+
+  <section id="linking">
+    <h2>Roblox account linking</h2>
+    <ul>
+      <li><code>/verify</code> links a Roblox account to a Discord account. The link is <strong>global</strong> — it works in every server that has the bot.</li>
+      <li><strong>Bloxlink fallback</strong> — if a user isn't linked with Scout but is with Bloxlink, the bot uses that automatically (opt-in with an API key).</li>
+      <li><code>/whois</code> <code>/lookup</code> — resolve either direction between Discord and Roblox.</li>
+      <li><code>/roblox</code> — any Roblox user's profile, avatar and account age.</li>
+    </ul>
+  </section>
+
+  <section id="perms">
+    <h2>Permissions</h2>
+    <ul>
+      <li>Two built-in tiers — <strong>staff role</strong> and <strong>admin role</strong> — cover most servers with no extra config.</li>
+      <li><strong>Manage Server</strong> always has full access, including <code>/config</code>.</li>
+      <li><strong>Permission groups</strong> — <code>/permgroup</code> maps a role to an exact set of capability nodes: a trial mod that can only warn, a senior that can approve bans, anything in between.</li>
+      <li><code>/config disable &lt;module&gt;</code> turns off a whole command group for the server.</li>
+      <li>Cross-tenant safe — a dashboard admin can only ever act on their own server's data and channels.</li>
+    </ul>
+  </section>
+
+  <section id="utility">
+    <h2>Utilities</h2>
+    <ul>
+      <li><code>/announce</code> — announcements from a saved template, to a default or chosen channel.</li>
+      <li><code>/embed</code> — an embed builder with live preview on the dashboard.</li>
+      <li><code>/poll</code> — native Discord polls.</li>
+      <li><strong>Tickets</strong> — a support-ticket system with a configurable category and auto-added staff role.</li>
+      <li><strong>Reaction-role panels</strong> — button-based self-assign roles.</li>
+      <li><code>/autohint</code> — scheduled recurring in-game hints.</li>
+      <li><code>/staff</code> — one command showing your staff roles, who's on duty and who's in-game.</li>
+      <li><code>/help</code> — full command help, in Discord.</li>
+      <li><code>/ai</code> and @mention replies — an optional assistant, toggleable per server.</li>
+      <li>Slash <em>and</em> prefix for every command; the prefix is configurable.</li>
+      <li>The bot's own custom emoji set, and a live "Watching N servers and M users" presence.</li>
+    </ul>
+  </section>
+
+  <section id="dashboard">
+    <h2>Web dashboard</h2>
+    <ul>
+      <li>Log in with Discord — every server where you have Manage Server and the bot is present.</li>
+      <li>Edit every setting, browse and edit cases, adjust shift time, review appeals / ban requests / LOAs.</li>
+      <li>Manage ER:LC servers, permission groups, auto-hints and message templates.</li>
+      <li>Changes sync to the bot <strong>instantly</strong> (Postgres LISTEN/NOTIFY, no restart).</li>
+      <li>A public <a href="/guide">setup guide</a> and <a href="/privacy">privacy</a> / <a href="/terms">terms</a> pages.</li>
+    </ul>
+  </section>
+
+  <section id="scale">
+    <h2>Built for scale</h2>
+    <ul>
+      <li><strong>Data lifecycle</strong> — remove the bot and every trace of your server is deleted 30 days later; server owners can request an immediate wipe or a full JSON export.</li>
+      <li><strong>Rate limiting</strong> on every external API path so one server can't degrade ER:LC for others.</li>
+      <li><strong>Response caching &amp; request de-duplication</strong> for the ER:LC API.</li>
+      <li><strong>Health checks</strong> on the web and worker for uptime monitoring.</li>
+      <li><strong>Feature flags</strong> with per-server and percentage rollout.</li>
+      <li><strong>Error tracking</strong> (Sentry) with a "report a problem" button on command failures — opt-in.</li>
+      <li><strong>Sharding</strong> wrapper ready for when the bot passes Discord's shard threshold.</li>
+      <li><strong>Acknowledgement gate</strong> — the bot can require a user to acknowledge a warning before using it again.</li>
+      <li>Session access reflects your current Discord permissions within ~5 minutes — a demoted admin loses dashboard access without waiting for a token to expire.</li>
+    </ul>
+  </section>
+
+  <section id="help" class="guide-foot">
+    <h2>Ready to go?</h2>
+    <p>
+      <a href="<%= inviteUrl %>" class="btn">Add the bot</a>
+      <a href="/guide" class="btn ghost sm">Setup guide</a>
+      <% if (typeof support !== "undefined" && support) { %><a href="<%= support %>" class="btn ghost sm">Support</a><% } %>
+      <a href="/" class="btn ghost sm">Home</a>
+    </p>
+  </section>
+
+</article>
+<%- include("partials/foot") %>
