@@ -9,7 +9,7 @@ import {
 import { one, many, query } from "../../lib/pg.js";
 import { registerComponent } from "../../lib/components.js";
 import { getGuildConfig } from "../../lib/guildConfig.js";
-import { COLORS, ok, err } from "../../lib/style.js";
+import { COLORS, okEmbed, infoEmbed, ok, err } from "../../lib/style.js";
 
 const panelRow = new ActionRowBuilder().addComponents(
   new ButtonBuilder().setCustomId("ticket:open").setLabel("Open a ticket").setEmoji("🎫").setStyle(ButtonStyle.Primary),
@@ -21,7 +21,7 @@ const closeRow = new ActionRowBuilder().addComponents(
 async function openTicket(interaction) {
   const cfg = getGuildConfig(interaction.guild.id);
   const existing = await one("SELECT channel_id FROM tickets WHERE guild_id=$1 AND opener_id=$2 AND status='open'", [interaction.guild.id, interaction.user.id]);
-  if (existing) return interaction.reply({ content: `You already have an open ticket: <#${existing.channel_id}>`, flags: 1 << 6 });
+  if (existing) return interaction.reply({ embeds: [infoEmbed(`You already have an open ticket: <#${existing.channel_id}>`)], flags: 1 << 6 });
 
   const me = interaction.guild.members.me;
   const overwrites = [
@@ -51,7 +51,7 @@ async function openTicket(interaction) {
     embeds: [new EmbedBuilder().setColor(COLORS.primary).setTitle("Ticket opened").setDescription("Describe your issue — staff will be with you shortly.")],
     components: [closeRow],
   });
-  await interaction.reply({ content: `Ticket created: <#${ch.id}>`, flags: 1 << 6 });
+  await interaction.reply({ embeds: [okEmbed(`Ticket created: <#${ch.id}>`)], flags: 1 << 6 });
 }
 
 async function closeTicket(interaction) {
@@ -89,7 +89,7 @@ export default {
           .setTitle("Support")
           .setDescription(ctx.args.message?.replace(/\\n/g, "\n") || "Need help? Open a ticket and staff will assist you.");
         await ctx.args.channel.send({ embeds: [embed], components: [panelRow] });
-        await ctx.reply(ok(`Ticket panel posted in <#${ctx.args.channel.id}>.`));
+        await ctx.reply({ embeds: [okEmbed(`Ticket panel posted in <#${ctx.args.channel.id}>.`)], ephemeral: true });
       },
     },
     close: {

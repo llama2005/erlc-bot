@@ -39,6 +39,24 @@ export const EMOJI = {
 export const ok = (msg) => `${EMOJI.tick} ${msg}`;
 export const err = (msg) => `${EMOJI.cross} ${msg}`;
 
+/**
+ * Coloured confirmation / info embeds for command replies. Keeps the look
+ * consistent — reserve the bare `ok()` / `err()` strings for trivial acks and
+ * validation errors.
+ */
+export const okEmbed = (description, title) => {
+  const e = new EmbedBuilder().setColor(COLORS.success).setDescription(`${EMOJI.tick} ${description}`);
+  return title ? e.setTitle(title) : e;
+};
+export const infoEmbed = (description, title) => {
+  const e = new EmbedBuilder().setColor(COLORS.primary).setDescription(description);
+  return title ? e.setTitle(title) : e;
+};
+export const failEmbed = (description, title) => {
+  const e = new EmbedBuilder().setColor(COLORS.danger).setDescription(`${EMOJI.cross} ${description}`);
+  return title ? e.setTitle(title) : e;
+};
+
 export const COLORS = {
   primary: 0x5865f2,
   success: 0x57f287,

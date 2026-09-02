@@ -1,6 +1,6 @@
 import { EmbedBuilder } from "discord.js";
 import { erlc, ErlcError } from "../../lib/erlc.js";
-import { COLORS, ok, err } from "../../lib/style.js";
+import { COLORS, okEmbed, err } from "../../lib/style.js";
 import {
   getServers,
   resolveServer,
@@ -29,7 +29,10 @@ export default {
       async execute(ctx) {
         const servers = await getServers(ctx.guild.id);
         if (!servers.length)
-          return ctx.reply({ content: "No ER:LC servers connected. Add one with `/erlcserver add <key> [label]`.", ephemeral: true });
+          return ctx.reply({
+            embeds: [new EmbedBuilder().setColor(COLORS.neutral).setTitle(`ER:LC servers · ${ctx.guild.name}`).setDescription("None connected. Add one with `/erlcserver add <key> [label]`.")],
+            ephemeral: true,
+          });
         const embed = new EmbedBuilder()
           .setColor(COLORS.primary)
           .setTitle(`ER:LC servers · ${ctx.guild.name}`)
@@ -73,7 +76,12 @@ export default {
 
         const row = await addServer(ctx.guild.id, label, key);
         await ctx.reply({
-          content: ok(`Connected **${row.label}**${row.is_default ? " (now the primary server)" : ""}. Target it with \`server:${row.label}\` on any ER:LC command.`),
+          embeds: [
+            okEmbed(
+              `Connected **${row.label}**${row.is_default ? " — this is now the **primary** server." : "."}\nTarget it with \`server:${row.label}\` on any ER:LC command.`,
+              "ER:LC server connected",
+            ),
+          ],
           ephemeral: true,
         });
       },
@@ -88,7 +96,10 @@ export default {
         await removeServer(ctx.guild.id, server.id);
         const remaining = await getServers(ctx.guild.id);
         const promoted = remaining.find((s) => s.is_default);
-        await ctx.reply(ok(`Removed **${server.label}**.${promoted && remaining.length ? ` **${promoted.label}** is now primary.` : ""}`));
+        await ctx.reply({
+          embeds: [okEmbed(`Disconnected **${server.label}**.${promoted && remaining.length ? ` **${promoted.label}** is now primary.` : ""}`)],
+          ephemeral: true,
+        });
       },
     },
     rename: {
@@ -105,7 +116,7 @@ export default {
         if ((await getServers(ctx.guild.id)).some((s) => s.id !== server.id && s.label.toLowerCase() === name.toLowerCase()))
           return ctx.reply({ content: err(`There's already a server called \`${name}\`.`), ephemeral: true });
         await renameServer(ctx.guild.id, server.id, name);
-        await ctx.reply(ok(`Renamed **${server.label}** → **${name}**.`));
+        await ctx.reply({ embeds: [okEmbed(`Renamed **${server.label}** → **${name}**.`)], ephemeral: true });
       },
     },
     default: {
@@ -117,7 +128,7 @@ export default {
         const { server } = await resolveServer(ctx.guild.id, ctx.args.label);
         if (!server) return ctx.reply({ content: err(`No server called \`${ctx.args.label}\`.`), ephemeral: true });
         await setDefaultServer(ctx.guild.id, server.id);
-        await ctx.reply(ok(`**${server.label}** is now the primary ER:LC server.`));
+        await ctx.reply({ embeds: [okEmbed(`**${server.label}** is now the primary ER:LC server.`)], ephemeral: true });
       },
     },
   },

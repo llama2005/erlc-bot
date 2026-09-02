@@ -1,6 +1,6 @@
 import { EmbedBuilder } from "discord.js";
 import { NODES, getPermGroups, upsertPermGroup, deletePermGroup } from "../../lib/permissions.js";
-import { COLORS, ok, err } from "../../lib/style.js";
+import { COLORS, okEmbed, err } from "../../lib/style.js";
 
 const ALL_NODES = Object.keys(NODES);
 
@@ -63,7 +63,15 @@ export default {
         if (!Array.isArray(parsed) && parsed.bad.length)
           return ctx.reply({ content: err(`Unknown node(s): ${parsed.bad.join(", ")}\nValid: ${ALL_NODES.join(", ")}`), ephemeral: true });
         await upsertPermGroup(ctx.guild.id, ctx.args.role.id, ctx.args.name.slice(0, 40), nodes);
-        await ctx.reply(ok(`**${ctx.args.name}** (<@&${ctx.args.role.id}>) → ${nodes.includes("*") ? "all permissions" : nodes.map((n) => `\`${n}\``).join(" ")}`));
+        await ctx.reply({
+          embeds: [
+            okEmbed(
+              `<@&${ctx.args.role.id}> → ${nodes.includes("*") ? "**all permissions**" : nodes.map((n) => `\`${n}\``).join(" ")}`,
+              `Permission group · ${ctx.args.name}`,
+            ),
+          ],
+          ephemeral: true,
+        });
       },
     },
 
@@ -81,7 +89,7 @@ export default {
         const nodes = new Set(g?.nodes ?? []);
         nodes.add(node);
         await upsertPermGroup(ctx.guild.id, ctx.args.role.id, g?.name ?? ctx.args.role.name, [...nodes]);
-        await ctx.reply(ok(`<@&${ctx.args.role.id}> can now \`${node}\`.`));
+        await ctx.reply({ embeds: [okEmbed(`<@&${ctx.args.role.id}> can now \`${node}\`.`)], ephemeral: true });
       },
     },
 
@@ -96,7 +104,7 @@ export default {
         if (!g) return ctx.reply({ content: err("That role has no permission group."), ephemeral: true });
         const nodes = g.nodes.filter((n) => n !== ctx.args.node.toLowerCase());
         await upsertPermGroup(ctx.guild.id, ctx.args.role.id, g.name, nodes);
-        await ctx.reply(ok(`Removed \`${ctx.args.node}\` from <@&${ctx.args.role.id}>.`));
+        await ctx.reply({ embeds: [okEmbed(`Removed \`${ctx.args.node}\` from <@&${ctx.args.role.id}>.`)], ephemeral: true });
       },
     },
 
@@ -106,8 +114,8 @@ export default {
       async execute(ctx) {
         await ctx.reply(
           (await deletePermGroup(ctx.guild.id, ctx.args.role.id))
-            ? ok(`Deleted the permission group for <@&${ctx.args.role.id}>.`)
-            : err("That role has no permission group."),
+            ? { embeds: [okEmbed(`Deleted the permission group for <@&${ctx.args.role.id}>.`)], ephemeral: true }
+            : { content: err("That role has no permission group."), ephemeral: true },
         );
       },
     },

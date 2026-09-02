@@ -1,5 +1,6 @@
 import { getLinkByDiscord, removeLink } from "../../lib/links.js";
 import { manageGuild } from "../../lib/checks.js";
+import { okEmbed } from "../../lib/style.js";
 
 export default {
   name: "unverify",
@@ -22,6 +23,9 @@ export default {
     if (!link) return ctx.reply({ content: `${targetId === ctx.author.id ? "You have" : `<@${targetId}> has`} no Roblox link.`, ephemeral: true });
 
     await removeLink(targetId);
-    await ctx.reply({ content: `Unlinked ${targetId === ctx.author.id ? "you" : `<@${targetId}>`} from **${link.roblox_name}**.`, ephemeral: true });
+    await ctx.reply({
+      embeds: [okEmbed(`Unlinked ${targetId === ctx.author.id ? "you" : `<@${targetId}>`} from **${link.roblox_name}**.`)],
+      ephemeral: true,
+    });
   },
 };

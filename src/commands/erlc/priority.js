@@ -1,7 +1,6 @@
-import { EmbedBuilder } from "discord.js";
 import { erlc, ErlcError } from "../../lib/erlc.js";
 import { resolveSendable } from "../../lib/modlog.js";
-import { COLORS, ok } from "../../lib/style.js";
+import { okEmbed } from "../../lib/style.js";
 import { getTemplate, renderPayload } from "../../lib/templates.js";
 import { erlcServerFor, SERVER_ARG } from "./_shared.js";
 
@@ -55,6 +54,14 @@ export default {
       );
     }
 
-    await ctx.reply(hinted ? ok(`Priority announced (in-game hint sent). Auto-ends in ${mins}m.`) : ok("Priority announced in Discord."));
+    await ctx.reply({
+      embeds: [
+        okEmbed(
+          hinted
+            ? `Priority announced — in-game hint sent, auto-ends in **${mins}m**.`
+            : `Priority announced in Discord${key ? "" : " (no ER:LC server connected, so no in-game hint)"}.`,
+        ),
+      ],
+    });
   },
 };

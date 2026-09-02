@@ -1,6 +1,6 @@
 import { erlc, ErlcError } from "../../lib/erlc.js";
 import { resolveChannel } from "../../lib/modlog.js";
-import { ok } from "../../lib/style.js";
+import { okEmbed } from "../../lib/style.js";
 import { getTemplate, renderPayload } from "../../lib/templates.js";
 import { erlcStaff, erlcKeyFor, SERVER_ARG } from "./_shared.js";
 
@@ -44,7 +44,7 @@ async function announce(ctx, kind) {
   }
 
   await ctx.reply({
-    content: ok(`${tpl.name} announced in <#${dest.id}>.${hinted ? " In-game hint sent." : ""}`),
+    embeds: [okEmbed(`**${tpl.name}** announced in <#${dest.id}>.${hinted ? "\nIn-game hint sent." : ""}`)],
     ephemeral: true,
   });
 }

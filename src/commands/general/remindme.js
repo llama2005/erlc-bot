@@ -1,5 +1,5 @@
 import { time } from "discord.js";
-import { ok, err } from "../../lib/style.js";
+import { okEmbed, err } from "../../lib/style.js";
 import { formatDuration } from "../../lib/util.js";
 import { addReminder, listReminders } from "../../lib/reminders.js";
 
@@ -25,6 +25,9 @@ export default {
       text: ctx.args.text.slice(0, 500),
       dueAt,
     });
-    await ctx.reply({ content: ok(`I'll remind you ${time(Math.floor(dueAt / 1000), "R")} (${formatDuration(ctx.args.when)}).`), ephemeral: true });
+    await ctx.reply({
+      embeds: [okEmbed(`I'll remind you ${time(Math.floor(dueAt / 1000), "R")} — in ${formatDuration(ctx.args.when)}.\n> ${ctx.args.text.slice(0, 300)}`)],
+      ephemeral: true,
+    });
   },
 };

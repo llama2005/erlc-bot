@@ -1,6 +1,6 @@
 import { EmbedBuilder } from "discord.js";
 import { listModTypes, addModType, removeModType, BUILTIN_TYPES } from "../../lib/modTypes.js";
-import { COLORS, ok, err } from "../../lib/style.js";
+import { COLORS, okEmbed, err } from "../../lib/style.js";
 
 const BUILTIN_NAMES = new Set(BUILTIN_TYPES.map((t) => t.name));
 
@@ -39,7 +39,7 @@ export default {
         const name = ctx.args.name.toLowerCase().replace(/[^a-z0-9_-]/g, "");
         if (!name) return ctx.reply({ content: err("Give a valid one-word name."), ephemeral: true });
         await addModType(ctx.guild.id, name, { isBan: !!ctx.args.ban, ingameCmd: ctx.args.ingame || null });
-        await ctx.reply(ok(`Moderation type **${name}** saved.`));
+        await ctx.reply({ embeds: [okEmbed(`Moderation type **${name}** saved.`)], ephemeral: true });
       },
     },
     remove: {
@@ -49,7 +49,11 @@ export default {
         const name = ctx.args.name.toLowerCase();
         if (BUILTIN_NAMES.has(name) && !(await listModTypes(ctx.guild.id)).some((t) => t.name === name && !BUILTIN_TYPES.includes(t)))
           return ctx.reply({ content: err(`\`${name}\` is a built-in type and can't be removed (you can override it with \`add\`).`), ephemeral: true });
-        await ctx.reply((await removeModType(ctx.guild.id, name)) ? ok(`Removed **${name}**.`) : err(`No custom type \`${name}\`.`));
+        await ctx.reply(
+          (await removeModType(ctx.guild.id, name))
+            ? { embeds: [okEmbed(`Removed moderation type **${name}**.`)], ephemeral: true }
+            : { content: err(`No custom type \`${name}\`.`), ephemeral: true },
+        );
       },
     },
   },

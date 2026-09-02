@@ -1,7 +1,7 @@
 import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
 import { one, query } from "../../lib/pg.js";
 import { registerComponent } from "../../lib/components.js";
-import { COLORS, ok, err } from "../../lib/style.js";
+import { COLORS, okEmbed, err } from "../../lib/style.js";
 
 registerComponent("br", async (interaction, [action, roleId]) => {
   if (action !== "toggle") return;
@@ -56,6 +56,6 @@ export default {
       ctx.args.channel.id,
       JSON.stringify(roles.map((r) => r.id)),
     ]);
-    await ctx.reply(ok(`Role panel posted in <#${ctx.args.channel.id}>.`));
+    await ctx.reply({ embeds: [okEmbed(`Role panel posted in <#${ctx.args.channel.id}>.`)], ephemeral: true });
   },
 };

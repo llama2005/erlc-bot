@@ -1,5 +1,5 @@
 import { EmbedBuilder } from "discord.js";
-import { COLORS, ok, err } from "../../lib/style.js";
+import { COLORS, okEmbed, err } from "../../lib/style.js";
 import { parseDuration, formatDuration } from "../../lib/util.js";
 import { listAutohints, addAutohint, removeAutohint, toggleAutohint } from "../../lib/autohint.js";
 import { resolveServer } from "../../lib/erlcServers.js";
@@ -19,7 +19,11 @@ export default {
       defer: true,
       async execute(ctx) {
         const rows = await listAutohints(ctx.guild.id);
-        if (!rows.length) return ctx.reply({ content: "No auto-hints. Add one with `/autohint add`.", ephemeral: true });
+        if (!rows.length)
+          return ctx.reply({
+            embeds: [new EmbedBuilder().setColor(COLORS.neutral).setTitle("Auto-hints").setDescription("None yet. Add one with `/autohint add`.")],
+            ephemeral: true,
+          });
         const embed = new EmbedBuilder().setColor(COLORS.primary).setTitle("Auto-hints").setDescription(
           rows.map((h) => `\`#${h.id}\` ${h.enabled ? "🟢" : "⚪"} every ${formatDuration(Number(h.interval_ms))}\n> ${h.message}`).join("\n\n"),
         );
@@ -46,7 +50,7 @@ export default {
         }
         const row = await addAutohint(ctx.guild.id, ctx.args.message.slice(0, 250), ms, serverId);
         const where = serverId ? ` on \`${(await resolveServer(ctx.guild.id, String(serverId))).server?.label}\`` : "";
-        await ctx.reply(ok(`Auto-hint #${row.id} added — every ${formatDuration(ms)}${where}.`));
+        await ctx.reply({ embeds: [okEmbed(`Auto-hint **#${row.id}** added — every ${formatDuration(ms)}${where}.`)], ephemeral: true });
       },
     },
     remove: {
@@ -54,7 +58,11 @@ export default {
       defer: true,
       args: [{ name: "id", type: "int", required: true, description: "Auto-hint number" }],
       async execute(ctx) {
-        await ctx.reply((await removeAutohint(ctx.guild.id, ctx.args.id)) ? ok(`Removed auto-hint #${ctx.args.id}.`) : err("No such auto-hint."));
+        await ctx.reply(
+          (await removeAutohint(ctx.guild.id, ctx.args.id))
+            ? { embeds: [okEmbed(`Removed auto-hint **#${ctx.args.id}**.`)], ephemeral: true }
+            : { content: err("No such auto-hint."), ephemeral: true },
+        );
       },
     },
     toggle: {
@@ -66,7 +74,9 @@ export default {
       ],
       async execute(ctx) {
         await ctx.reply(
-          (await toggleAutohint(ctx.guild.id, ctx.args.id, ctx.args.on)) ? ok(`Auto-hint #${ctx.args.id} ${ctx.args.on ? "enabled" : "disabled"}.`) : err("No such auto-hint."),
+          (await toggleAutohint(ctx.guild.id, ctx.args.id, ctx.args.on))
+            ? { embeds: [okEmbed(`Auto-hint **#${ctx.args.id}** ${ctx.args.on ? "enabled" : "disabled"}.`)], ephemeral: true }
+            : { content: err("No such auto-hint."), ephemeral: true },
         );
       },
     },

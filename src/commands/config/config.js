@@ -2,6 +2,7 @@ import { EmbedBuilder } from "discord.js";
 import { setGuildConfig } from "../../lib/guildConfig.js";
 import { listServers } from "../../lib/erlcServers.js";
 import { menuView } from "../../lib/settingsMenu.js";
+import { okEmbed } from "../../lib/style.js";
 
 /** setting name -> { field, kind, label } */
 const SETTINGS = {
@@ -65,6 +66,7 @@ export default {
     const setting = ctx.args.setting?.toLowerCase();
     const value = ctx.args.value?.trim();
     const reply = (content) => ctx.reply({ content, ephemeral: true });
+    const saved = (msg) => ctx.reply({ embeds: [okEmbed(msg)], ephemeral: true });
 
     // No setting on a slash command → open the interactive menu.
     if (!setting && ctx.isInteraction) {
@@ -106,13 +108,13 @@ export default {
         const known = new Set([...manager.commands.values()].map((c) => c.module));
         if (!known.has(mod)) return reply(`No module \`${mod}\`. Known: ${[...known].join(", ")}`);
         await setGuildConfig(ctx.guild.id, { disabledModules: toggleInList(cfg.disabledModules, mod, on) });
-        return reply(`Module \`${mod}\` ${on ? "disabled" : "enabled"}.`);
+        return saved(`Module \`${mod}\` ${on ? "disabled" : "enabled"}.`);
       }
       const cmd = manager.resolve(value.toLowerCase());
       if (!cmd) return reply(`No command \`${value}\`.`);
       if (cmd.module === "config") return reply("`config` commands can't be disabled.");
       await setGuildConfig(ctx.guild.id, { disabledCommands: toggleInList(cfg.disabledCommands, cmd.name, on) });
-      return reply(`Command \`${cmd.name}\` ${on ? "disabled" : "enabled"}.`);
+      return saved(`Command \`${cmd.name}\` ${on ? "disabled" : "enabled"}.`);
     }
 
     const spec = SETTINGS[setting];
@@ -131,39 +133,39 @@ export default {
         if (clearing) return reply("Give a prefix of 1-5 characters.");
         if (value.length > 5) return reply("Prefix must be 1-5 characters.");
         await setGuildConfig(ctx.guild.id, { prefix: value });
-        return reply(`Prefix set to \`${value}\`.`);
+        return saved(`Prefix set to \`${value}\`.`);
       }
       case "bool": {
         const on = ["on", "enable", "enabled", "true", "yes"].includes(value?.toLowerCase());
         const off = CLEARWORDS.includes(value?.toLowerCase()) || ["false", "no", "disable", "disabled"].includes(value?.toLowerCase());
         if (!on && !off) return reply(`Use \`config ${setting} on\` or \`config ${setting} off\`.`);
         await setGuildConfig(ctx.guild.id, { [spec.field]: on });
-        return reply(`${spec.label} **${on ? "enabled" : "disabled"}**.`);
+        return saved(`${spec.label} **${on ? "enabled" : "disabled"}**.`);
       }
       case "secret": {
         if (!ctx.isInteraction) await ctx.source.delete().catch(() => {});
         if (clearing) {
           await setGuildConfig(ctx.guild.id, { [spec.field]: null });
-          return reply(`${spec.label} cleared.`);
+          return saved(`${spec.label} cleared.`);
         }
         await setGuildConfig(ctx.guild.id, { [spec.field]: value });
-        return reply(`${spec.label} saved${ctx.isInteraction ? "." : " (your message was deleted)."}`);
+        return saved(`${spec.label} saved${ctx.isInteraction ? "." : " (your message was deleted)."}`);
       }
       case "role": {
         if (clearing) {
           await setGuildConfig(ctx.guild.id, { [spec.field]: null });
-          return reply(`${spec.label} cleared.`);
+          return saved(`${spec.label} cleared.`);
         }
         const id = value.match(/\d{15,25}/)?.[0];
         const role = id && ctx.guild.roles.cache.get(id);
         if (!role) return reply("Give a role (mention or ID), or `none`.");
         await setGuildConfig(ctx.guild.id, { [spec.field]: role.id });
-        return reply(`${spec.label} set to <@&${role.id}>.`);
+        return saved(`${spec.label} set to <@&${role.id}>.`);
       }
       case "channel": {
         if (clearing) {
           await setGuildConfig(ctx.guild.id, { [spec.field]: null });
-          return reply(`${spec.label} cleared.`);
+          return saved(`${spec.label} cleared.`);
         }
         const id = value.match(/\d{15,25}/)?.[0];
         const channel = id && ctx.guild.channels.cache.get(id);
@@ -173,34 +175,34 @@ export default {
         if (spec.field === "ticketCategory" && channel.type !== 4)
           return reply("Give a **category** channel for `ticket-category`.");
         await setGuildConfig(ctx.guild.id, { [spec.field]: channel.id });
-        return reply(`${spec.label} set to <#${channel.id}>.`);
+        return saved(`${spec.label} set to <#${channel.id}>.`);
       }
       case "word": {
         if (clearing) {
           await setGuildConfig(ctx.guild.id, { [spec.field]: SETTINGS[setting]?.field === "ingameWarnTrigger" ? "warn" : null });
-          return reply(`${spec.label} reset.`);
+          return saved(`${spec.label} reset.`);
         }
         const w = value.toLowerCase().replace(/[^a-z0-9_-]/g, "");
         if (!w) return reply("Give a single word.");
         await setGuildConfig(ctx.guild.id, { [spec.field]: w });
-        return reply(`${spec.label} set to \`${w}\`.`);
+        return saved(`${spec.label} set to \`${w}\`.`);
       }
       case "int": {
         const n = Number.parseInt(value, 10);
         if (!Number.isFinite(n) || n < 0) return reply("Give a whole number (0 to disable).");
         await setGuildConfig(ctx.guild.id, { [spec.field]: n });
-        return reply(`${spec.label} set to **${n}**${n === 0 ? " (disabled)" : ""}.`);
+        return saved(`${spec.label} set to **${n}**${n === 0 ? " (disabled)" : ""}.`);
       }
       case "duration": {
         const { parseDuration, formatDuration } = await import("../../lib/util.js");
         if (clearing || value === "0") {
           await setGuildConfig(ctx.guild.id, { [spec.field]: 0 });
-          return reply(`${spec.label} disabled.`);
+          return saved(`${spec.label} disabled.`);
         }
         const ms = parseDuration(value);
         if (!ms) return reply("Give a duration like `3h` or `90m` (or `0` to disable).");
         await setGuildConfig(ctx.guild.id, { [spec.field]: ms });
-        return reply(`${spec.label} set to \`${formatDuration(ms)}\`.`);
+        return saved(`${spec.label} set to \`${formatDuration(ms)}\`.`);
       }
       default:
         return reply("Unhandled setting.");

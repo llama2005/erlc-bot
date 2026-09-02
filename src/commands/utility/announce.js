@@ -1,4 +1,4 @@
-import { ok, err } from "../../lib/style.js";
+import { okEmbed, err } from "../../lib/style.js";
 import { getTemplate, renderPayload } from "../../lib/templates.js";
 import { resolveChannel } from "../../lib/modlog.js";
 
@@ -31,6 +31,6 @@ export default {
 
     const content = [ctx.args.ping ? `<@&${ctx.args.ping.id}>` : "", payload.content].filter(Boolean).join(" ") || undefined;
     await ch.send({ ...payload, content, allowedMentions: { roles: ctx.args.ping ? [ctx.args.ping.id] : [] } });
-    await ctx.reply(ok(`Posted to <#${ch.id}>${tpl.custom ? " using your custom template" : ""}.`));
+    await ctx.reply({ embeds: [okEmbed(`Announcement posted to <#${ch.id}>${tpl.custom ? " using your custom template" : ""}.`)], ephemeral: true });
   },
 };

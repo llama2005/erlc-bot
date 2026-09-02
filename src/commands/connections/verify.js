@@ -1,6 +1,7 @@
 import { EmbedBuilder } from "discord.js";
 import { userByUsername, userById } from "../../lib/roblox.js";
 import { setLink, getLinkByDiscord, startVerification, getPending, clearPending } from "../../lib/links.js";
+import { okEmbed } from "../../lib/style.js";
 
 export default {
   name: "verify",
@@ -56,6 +57,14 @@ export default {
 
     clearPending(ctx.author.id);
     await setLink(ctx.author.id, pending.robloxId, pending.robloxName);
-    await ctx.reply({ content: `✅ Linked to **${pending.robloxName}** (\`${pending.robloxId}\`). You can clear the phrase from your profile now.`, ephemeral: true });
+    await ctx.reply({
+      embeds: [
+        okEmbed(
+          `You're now linked to **${pending.robloxName}** (\`${pending.robloxId}\`).\nThis works in every server with the bot — you can remove the phrase from your profile now.`,
+          "Roblox account linked",
+        ),
+      ],
+      ephemeral: true,
+    });
   },
 };
