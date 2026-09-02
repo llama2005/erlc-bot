@@ -51,6 +51,32 @@ export function formatDuration(ms) {
   return parts.join(" ");
 }
 
+/**
+ * Verbose duration — "10 months, 3 weeks, 1 day, 21 hours, 36 minutes".
+ * Months/weeks are approximate (30d / 7d), matching Whisp's shift readout.
+ */
+export function formatDurationLong(ms) {
+  let s = Math.floor(Math.max(0, ms) / 1000);
+  if (s === 0) return "0 seconds";
+  const parts = [];
+  for (const [label, size] of [
+    ["year", 31536000],
+    ["month", 2592000],
+    ["week", 604800],
+    ["day", 86400],
+    ["hour", 3600],
+    ["minute", 60],
+    ["second", 1],
+  ]) {
+    if (s >= size) {
+      const n = Math.floor(s / size);
+      parts.push(`${n} ${label}${n === 1 ? "" : "s"}`);
+      s %= size;
+    }
+  }
+  return parts.join(", ");
+}
+
 /** Tokenize a command string, respecting "double" and 'single' quotes. */
 export function tokenize(str) {
   const tokens = [];

@@ -1,7 +1,7 @@
-import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, time } from "discord.js";
+import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
 import { registerComponent } from "../../lib/components.js";
 import { COLORS, ok, err, EMOJI } from "../../lib/style.js";
-import { formatDuration } from "../../lib/util.js";
+import { formatDuration, formatDurationLong } from "../../lib/util.js";
 import {
   getActiveShift,
   startShift,
@@ -26,23 +26,30 @@ async function panel(guild, userId, username, type = "default") {
     weeklyTrend(guild.id, userId, WEEK),
   ]);
 
+  // Weekly running total = completed shifts this week + any time on the current shift.
+  const weekTotal = (week.total || 0) + (active && active.started_at >= Date.now() - WEEK ? Date.now() - active.started_at : 0);
+  const allTotal = (all.total || 0) + (active ? Date.now() - active.started_at : 0);
+
   const embed = new EmbedBuilder()
-    .setColor(COLORS.primary)
-    .setAuthor({ name: `${username} · shifts` })
+    .setColor(active ? COLORS.clockIn : COLORS.neutral)
+    .setAuthor({ name: username })
     .setDescription(
       active
-        ? `${EMOJI.online} On duty since ${time(Math.floor(active.started_at / 1000), "R")} (\`${active.shift_type}\`)`
-        : `${EMOJI.offline} Off duty`,
+        ? `${EMOJI.online} Clocked in for ${formatDurationLong(Date.now() - active.started_at)}`
+        : `${EMOJI.offline} Not clocked in`,
     )
-    .addFields(
-      { name: "All-time", value: `\`${formatDuration(all.total || 0)}\` · ${all.sessions || 0} shifts`, inline: true },
-      { name: "This week", value: `\`${formatDuration(week.total || 0)}\` · ${week.sessions || 0} shifts`, inline: true },
-      { name: "Trend", value: `${trend >= 0 ? "▲" : "▼"} ${Math.abs(trend)}% vs last week`, inline: true },
-    );
+    .addFields({
+      name: "Time",
+      value: `Total: **${formatDurationLong(allTotal)}**\nWeekly: **${formatDurationLong(weekTotal)}**`,
+    });
+
+  if (active) embed.setFooter({ text: `Shift type: ${active.shift_type} | ID: ${active.id}` });
+  else if (trend) embed.setFooter({ text: `${trend >= 0 ? "▲" : "▼"} ${Math.abs(trend)}% vs last week` });
 
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId(`shift:in:${type}`).setLabel("Clock in").setStyle(ButtonStyle.Success).setDisabled(!!active),
     new ButtonBuilder().setCustomId("shift:out").setLabel("Clock out").setStyle(ButtonStyle.Danger).setDisabled(!active),
+    new ButtonBuilder().setCustomId(`shift:refresh:${type}`).setLabel("Refresh").setStyle(ButtonStyle.Secondary),
   );
   return { embeds: [embed], components: [row] };
 }
@@ -63,6 +70,7 @@ registerComponent("shift", async (interaction, [action, type]) => {
       await logShiftEvent(interaction.client, guild.id, { kind: "out", userId: user.id, shift: s });
     }
   }
+  // action === "refresh" just re-renders.
   await interaction.editReply(await panel(guild, user.id, user.username, type || "default"));
 });
 
