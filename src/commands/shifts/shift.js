@@ -145,11 +145,45 @@ export default {
       aliases: ["onduty", "od"],
       async execute(ctx) {
         const rows = await listActiveShifts(ctx.guild.id);
-        if (!rows.length) return ctx.reply("Nobody is on duty.");
-        const lines = rows.map((r) => `• <@${r.user_id}> — \`${formatDuration(Date.now() - r.started_at)}\` (\`${r.shift_type}\`)`);
-        await ctx.reply({
-          embeds: [new EmbedBuilder().setColor(COLORS.primary).setTitle(`On duty — ${rows.length}`).setDescription(lines.join("\n"))],
+        if (!rows.length) {
+          return ctx.reply({
+            embeds: [new EmbedBuilder().setColor(COLORS.neutral).setTitle(ctx.guild.name).setDescription("Nobody is on duty.")],
+          });
+        }
+
+        // Group by shift type; within a group, longest on-duty first.
+        const groups = new Map();
+        for (const r of rows) {
+          if (!groups.has(r.shift_type)) groups.set(r.shift_type, []);
+          groups.get(r.shift_type).push(r);
+        }
+        const now = Date.now();
+        const ordered = [...groups.entries()].sort((a, b) => {
+          if (a[0] === "default") return -1;
+          if (b[0] === "default") return 1;
+          return b[1].length - a[1].length;
         });
+
+        const embed = new EmbedBuilder()
+          .setColor(COLORS.primary)
+          .setTitle(ctx.guild.name)
+          .setFooter({ text: `${rows.length} on duty` });
+
+        for (const [type, list] of ordered.slice(0, 25)) {
+          list.sort((a, b) => a.started_at - b.started_at);
+          const lines = [];
+          let i = 0;
+          for (const r of list) {
+            const line = `\`${i + 1}.\` <@${r.user_id}> - ${formatDurationLong(now - r.started_at)}`;
+            if (lines.join("\n").length + line.length > 950) break;
+            lines.push(line);
+            i++;
+          }
+          if (i < list.length) lines.push(`And ${list.length - i} more...`);
+          embed.addFields({ name: `${prettyType(type)} [${list.length}]`, value: lines.join("\n") });
+        }
+
+        await ctx.reply({ embeds: [embed] });
       },
     },
 
