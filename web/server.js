@@ -767,13 +767,15 @@ app.post("/dashboard/:guildId/banreqs/:id/:decision", requireAuth, requireGuildA
 app.get("/admin", requireAuth, requireOperator, async (req, res) => {
   const [overview, guilds, locks] = await Promise.all([adminOverview(), adminGuilds(req.query.q || ""), activeLocks()]);
   const ids = [...new Set([...guilds.map((g) => g.owner_id), ...locks.map((l) => l.created_by)].filter(Boolean))].slice(0, 60);
-  const names = ids.length ? await d.userNames(ids).catch(() => new Map()) : new Map();
+  const owners = ids.length ? await d.userInfos(ids).catch(() => new Map()) : new Map();
+  const names = new Map([...owners].map(([id, u]) => [id, u.globalName || u.username || `…${id.slice(-4)}`]));
   res.render("admin", {
     user: req.user,
     overview,
     guilds,
     locks,
     names,
+    owners,
     q: req.query.q || "",
     flags: Object.entries(FLAGS).map(([name, meta]) => {
       const g = listFlagRows().find((r) => r.name === name && r.scope === "global" && r.target === "");

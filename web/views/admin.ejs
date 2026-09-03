@@ -1,5 +1,14 @@
 <%- include("partials/head", { title: "Admin" }) %>
 <% function nm(id){ return (names && names.get && names.get(String(id))) || ('…' + String(id).slice(-4)); } %>
+<% function ownerCell(id){
+     if (!id) return '<span class="muted">unknown</span>';
+     var u = owners && owners.get && owners.get(String(id));
+     var display = u && (u.globalName || u.username);
+     var handle = u && u.username ? '@' + u.username : '';
+     return (display ? '<strong>' + display + '</strong> ' : '')
+          + (handle ? '<span class="muted">' + handle + '</span> ' : '')
+          + '<code>' + id + '</code>';
+   } %>
 
 <div class="page-head">
   <div><h1>Operator panel</h1><div class="sub">Bot-wide controls. You're seeing this because your ID is in <code>OWNER_IDS</code>.</div></div>
@@ -91,13 +100,19 @@
     <tbody>
       <% guilds.forEach(function(row){ %>
         <tr>
-          <td><%= row.name || "(unknown)" %><br><span class="muted"><%= row.guild_id %></span></td>
+          <td>
+            <%= row.name || "(unknown)" %><br>
+            <a class="muted" href="https://discord.com/channels/<%= row.guild_id %>" target="_blank" rel="noopener"><%= row.guild_id %></a>
+          </td>
           <td><%= (row.member_count || 0).toLocaleString() %></td>
-          <td><%= nm(row.owner_id) %></td>
+          <td><%- ownerCell(row.owner_id) %></td>
           <td><%= row.cases %></td>
           <td><%= row.erlc_servers %></td>
           <td><%= ago(row.updated_at) %></td>
-          <td><a class="btn sm ghost" href="/dashboard/<%= row.guild_id %>">Open</a></td>
+          <td>
+            <a class="btn sm ghost" href="/dashboard/<%= row.guild_id %>">Dashboard</a>
+            <a class="btn sm ghost" href="https://discord.com/channels/<%= row.guild_id %>" target="_blank" rel="noopener">Discord</a>
+          </td>
         </tr>
       <% }) %>
     </tbody>

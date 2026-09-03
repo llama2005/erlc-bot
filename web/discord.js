@@ -122,15 +122,29 @@ export async function memberNames(guildId, ids) {
 }
 /** Resolve a set of Discord user ids to global names (bot token, cached). */
 export async function userNames(ids) {
+  const infos = await userInfos(ids);
+  const out = new Map();
+  for (const [id, u] of infos) out.set(id, u.globalName || u.username || `user …${id.slice(-4)}`);
+  return out;
+}
+
+const infoCache = new Map(); // id -> { info, at }
+
+/**
+ * Resolve Discord user ids to { id, username, globalName } (bot token, cached).
+ * `username` is the account's real handle (e.g. "voidnyx1"); `globalName` is the
+ * chosen display name, which may be null.
+ */
+export async function userInfos(ids) {
   const out = new Map();
   await Promise.all(
     [...new Set(ids.filter(Boolean).map(String))].map(async (id) => {
-      const c = nameCache.get(`u:${id}`);
-      if (c && Date.now() - c.at < NAME_TTL) return out.set(id, c.name);
+      const c = infoCache.get(id);
+      if (c && Date.now() - c.at < NAME_TTL) return out.set(id, c.info);
       const u = await bot(`/users/${id}`).catch(() => null);
-      const name = u ? u.global_name || u.username || `user ${id}` : `user …${id.slice(-4)}`;
-      nameCache.set(`u:${id}`, { name, at: Date.now() });
-      out.set(id, name);
+      const info = { id, username: u?.username || null, globalName: u?.global_name || null };
+      infoCache.set(id, { info, at: Date.now() });
+      out.set(id, info);
     }),
   );
   return out;
