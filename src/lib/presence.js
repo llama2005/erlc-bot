@@ -1,4 +1,5 @@
 import { ActivityType } from "discord.js";
+import { config } from "../config.js";
 
 const fmt = (n) => n.toLocaleString("en-US");
 const plural = (n, word) => `${fmt(n)} ${word}${n === 1 ? "" : "s"}`;
@@ -20,6 +21,8 @@ async function apply(client) {
       /* fall back to this shard's own numbers */
     }
   }
+  guilds = Math.max(guilds, config.display.minGuilds || 0);
+  users = Math.max(users, config.display.minMembers || 0);
   client.user.setPresence({
     status: "online",
     activities: [{ name: `${plural(guilds, "guild")} and ${plural(users, "user")}!`, type: ActivityType.Watching }],

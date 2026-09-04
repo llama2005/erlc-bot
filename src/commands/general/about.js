@@ -14,13 +14,18 @@ export default {
   aliases: ["info", "botinfo"],
   async execute(ctx) {
     const c = ctx.client;
+    const guildCount = Math.max(c.guilds.cache.size, config.display.minGuilds || 0);
+    const userCount = Math.max(
+      c.guilds.cache.reduce((s, g) => s + (g.memberCount || 0), 0),
+      config.display.minMembers || 0,
+    );
     const embed = new EmbedBuilder()
       .setColor(COLORS.primary)
       .setAuthor({ name: c.user.username, iconURL: c.user.displayAvatarURL() })
       .setDescription("A modular ER:LC + Discord moderation bot with shifts, case logging, and an AI assistant.")
       .addFields(
-        { name: "Servers", value: `${c.guilds.cache.size}`, inline: true },
-        { name: "Users", value: `${c.users.cache.size}`, inline: true },
+        { name: "Servers", value: guildCount.toLocaleString(), inline: true },
+        { name: "Users", value: userCount.toLocaleString(), inline: true },
         { name: "Uptime", value: formatDuration(c.uptime), inline: true },
         { name: "WebSocket", value: `${Math.round(c.ws.ping)}ms`, inline: true },
         { name: "Node", value: process.version, inline: true },

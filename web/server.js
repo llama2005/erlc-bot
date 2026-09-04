@@ -164,7 +164,14 @@ app.get("/", async (req, res) => {
   res.render("index", {
     user: readSession(req),
     inviteUrl: d.inviteUrl(),
-    stats: { guilds: guilds.length, commands: guide?.total ?? 49 },
+    stats: {
+      guilds: Math.max(guilds.length, config.display.minGuilds || 0),
+      members: Math.max(
+        guilds.reduce((s, g) => s + (g.member_count || 0), 0),
+        config.display.minMembers || 0,
+      ),
+      commands: guide?.total ?? 49,
+    },
   });
 });
 

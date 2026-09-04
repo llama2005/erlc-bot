@@ -55,7 +55,8 @@
 </div>
 
 <div class="stat-strip">
-  <div><div class="n"><%= typeof stats !== "undefined" ? stats.guilds : "—" %></div><div class="l">servers</div></div>
+  <div><div class="n"><%= typeof stats !== "undefined" ? stats.guilds.toLocaleString() : "—" %></div><div class="l">servers</div></div>
+  <div><div class="n"><%= typeof stats !== "undefined" && stats.members ? stats.members.toLocaleString() : "—" %></div><div class="l">members</div></div>
   <div><div class="n"><%= typeof stats !== "undefined" ? stats.commands : "49" %></div><div class="l">commands</div></div>
   <div><div class="n">∞</div><div class="l">cases retained</div></div>
 </div>

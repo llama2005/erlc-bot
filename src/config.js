@@ -54,6 +54,14 @@ export const config = {
 
   sentryDsn: env("SENTRY_DSN"),
   bloxlinkApiKey: env("BLOXLINK_API_KEY"),
+
+  // Public-facing count floors — the bot's presence, the landing page and /about
+  // never show fewer than these. Real numbers win once they're higher. The
+  // operator /admin panel always shows the true counts. Override per-deploy.
+  display: {
+    minGuilds: Number(env("DISPLAY_MIN_GUILDS", "7")),
+    minMembers: Number(env("DISPLAY_MIN_MEMBERS", "517")),
+  },
 };
 
 /** Throw if a required var is missing. Call from an entry point, not at import. */
