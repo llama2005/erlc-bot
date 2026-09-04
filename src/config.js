@@ -59,8 +59,8 @@ export const config = {
   // never show fewer than these. Real numbers win once they're higher. The
   // operator /admin panel always shows the true counts. Override per-deploy.
   display: {
-    minGuilds: Number(env("DISPLAY_MIN_GUILDS", "31")),
-    minMembers: Number(env("DISPLAY_MIN_MEMBERS", "12847")),
+    minGuilds: Number(env("DISPLAY_MIN_GUILDS", "9")),
+    minMembers: Number(env("DISPLAY_MIN_MEMBERS", "318")),
   },
 };
 
