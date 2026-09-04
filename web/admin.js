@@ -66,7 +66,14 @@ export async function adminGuilds(q = "") {
   const rows = await many(
     `SELECT b.guild_id, b.name, b.member_count, b.owner_id, b.updated_at,
             (SELECT count(*)::int FROM mod_cases c WHERE c.guild_id = b.guild_id) cases,
-            (SELECT count(*)::int FROM erlc_servers e WHERE e.guild_id = b.guild_id) erlc_servers
+            (SELECT count(*)::int FROM erlc_servers e WHERE e.guild_id = b.guild_id) erlc_servers,
+            (SELECT count(DISTINCT uid)::int FROM (
+                SELECT moderator_id AS uid FROM mod_cases WHERE guild_id = b.guild_id
+                UNION
+                SELECT user_id AS uid FROM shifts WHERE guild_id = b.guild_id
+              ) active_staff
+             WHERE EXISTS (SELECT 1 FROM roblox_links rl WHERE rl.discord_id = active_staff.uid)
+            ) linked
        FROM bot_guilds b
       WHERE b.removed_at IS NULL
       ORDER BY b.member_count DESC NULLS LAST`,
@@ -74,6 +81,31 @@ export async function adminGuilds(q = "") {
   if (!q) return rows;
   const ql = q.toLowerCase();
   return rows.filter((r) => (r.name || "").toLowerCase().includes(ql) || r.guild_id.includes(q) || (r.owner_id || "").includes(q));
+}
+
+/**
+ * Every Roblox↔Discord link (global — not guild-scoped, by design), with the
+ * guild(s) that Discord account has actually been active in (as a moderator
+ * or a shift-clocking staff member) so "verified" isn't just a bare count.
+ */
+export async function adminVerifiedUsers() {
+  const rows = await many(
+    `SELECT rl.discord_id, rl.roblox_id, rl.roblox_name, rl.linked_at,
+            (SELECT array_agg(DISTINCT g.guild_id) FROM (
+                SELECT guild_id FROM mod_cases WHERE moderator_id = rl.discord_id
+                UNION
+                SELECT guild_id FROM shifts WHERE user_id = rl.discord_id
+              ) g
+            ) guild_ids
+       FROM roblox_links rl
+      ORDER BY rl.linked_at DESC
+      LIMIT 500`,
+  );
+  const guildIds = [...new Set(rows.flatMap((r) => r.guild_ids || []))];
+  const guildNames = guildIds.length
+    ? new Map((await many(`SELECT guild_id, name FROM bot_guilds WHERE guild_id = ANY($1)`, [guildIds])).map((g) => [g.guild_id, g.name]))
+    : new Map();
+  return rows.map((r) => ({ ...r, guilds: (r.guild_ids || []).map((id) => ({ id, name: guildNames.get(id) || null })) }));
 }
 
 export const activeLocks = () =>

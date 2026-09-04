@@ -22,7 +22,7 @@ import {
 import { getBotGuild, listBotGuilds } from "../src/lib/botGuilds.js";
 import { FLAGS, isEnabled, setFlag, clearFlag, listFlagRows, startFlagSync } from "../src/lib/flags.js";
 import { createAction, acknowledgeAction } from "../src/lib/botActions.js";
-import { isOperator, adminOverview, adminGuilds, activeLocks } from "./admin.js";
+import { isOperator, adminOverview, adminGuilds, adminVerifiedUsers, activeLocks } from "./admin.js";
 import {
   getRecentCases,
   getCase,
@@ -790,6 +790,12 @@ app.get("/admin", requireAuth, requireOperator, async (req, res) => {
     }),
     saved: req.query.saved || "",
   });
+});
+
+app.get("/admin/verified", requireAuth, requireOperator, async (req, res) => {
+  const rows = await adminVerifiedUsers();
+  const owners = await d.userInfos(rows.map((r) => r.discord_id)).catch(() => new Map());
+  res.render("verified", { user: req.user, rows, owners });
 });
 
 app.post("/admin/flags", requireAuth, requireOperator, async (req, res) => {

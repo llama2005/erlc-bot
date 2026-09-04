@@ -1,0 +1,42 @@
+<%- include("partials/head", { title: "Verified users" }) %>
+<% function person(id){
+     var u = owners && owners.get && owners.get(String(id));
+     var display = u && (u.globalName || u.username);
+     var handle = u && u.username ? '@' + u.username : '';
+     return (display ? '<strong>' + display + '</strong> ' : '')
+          + (handle ? '<span class="muted">' + handle + '</span> ' : '')
+          + '<code>' + id + '</code>';
+   } %>
+
+<div class="page-head">
+  <div><h1>Verified users</h1><div class="sub">Every Roblox ↔ Discord link — <%= rows.length %> total. Links are global, not per-server; "Active in" is inferred from that account's cases/shifts.</div></div>
+  <a href="/admin" class="btn ghost sm">← Admin</a>
+</div>
+
+<% if (!rows.length) { %>
+  <p class="muted">No linked accounts yet.</p>
+<% } else { %>
+<section class="card">
+  <table class="g-table">
+    <thead><tr><th>Discord</th><th>Roblox</th><th>Linked</th><th>Active in</th></tr></thead>
+    <tbody>
+      <% rows.forEach(function(r){ %>
+        <tr>
+          <td><%- person(r.discord_id) %></td>
+          <td><strong><%= r.roblox_name %></strong> <span class="muted"><%= r.roblox_id %></span></td>
+          <td><%= ago(r.linked_at) %></td>
+          <td>
+            <% if (!r.guilds.length) { %>
+              <span class="muted">no server activity yet</span>
+            <% } else { %>
+              <% r.guilds.forEach(function(g, i){ %><% if (i) { %>, <% } %><%= g.name || ('…' + g.id.slice(-4)) %><% }) %>
+            <% } %>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</section>
+<% } %>
+
+<%- include("partials/foot") %>

@@ -21,7 +21,7 @@
   <div><b><%= overview.stats.members.toLocaleString() %></b><span>members reached</span></div>
   <div><b><%= overview.stats.cases.toLocaleString() %></b><span>cases (<%= overview.stats.casesWeek %> this week)</span></div>
   <div><b><%= overview.stats.shifts.toLocaleString() %></b><span>shifts logged</span></div>
-  <div><b><%= overview.stats.links.toLocaleString() %></b><span>verified users</span></div>
+  <a href="/admin/verified"><b><%= overview.stats.links.toLocaleString() %></b><span>verified users →</span></a>
   <div><b><%= overview.stats.banreqs + overview.stats.appeals + overview.stats.loa %></b><span>pending reviews</span></div>
   <div><b><%= overview.stats.locks %></b><span>active locks</span></div>
   <div><b><%= overview.dbMs %>ms</b><span>db · <%= overview.version %> · up <%= Math.floor(overview.uptime/3600) %>h</span></div>
@@ -96,7 +96,7 @@
     <button class="btn sm">Search</button>
   </form>
   <table class="g-table">
-    <thead><tr><th>Server</th><th>Members</th><th>Owner</th><th>Cases</th><th>ER:LC</th><th>Updated</th><th></th></tr></thead>
+    <thead><tr><th>Server</th><th>Members</th><th>Owner</th><th>Cases</th><th>Linked</th><th>ER:LC</th><th>Updated</th><th></th></tr></thead>
     <tbody>
       <% guilds.forEach(function(row){ %>
         <tr>
@@ -107,6 +107,7 @@
           <td><%= (row.member_count || 0).toLocaleString() %></td>
           <td><%- ownerCell(row.owner_id) %></td>
           <td><%= row.cases %></td>
+          <td><%= row.linked %></td>
           <td><%= row.erlc_servers %></td>
           <td><%= ago(row.updated_at) %></td>
           <td>
