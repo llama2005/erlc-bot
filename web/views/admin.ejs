@@ -5,7 +5,8 @@
      var u = owners && owners.get && owners.get(String(id));
      var display = u && (u.globalName || u.username);
      var handle = u && u.username ? '@' + u.username : '';
-     return (display ? '<strong>' + display + '</strong> ' : '')
+     var img = u && u.avatar ? '<img src="' + u.avatar + '" width="18" height="18" style="border-radius:50%;vertical-align:-4px;margin-right:5px">' : '';
+     return img + (display ? '<strong>' + display + '</strong> ' : '')
           + (handle ? '<span class="muted">' + handle + '</span> ' : '')
           + '<code>' + id + '</code>';
    } %>

@@ -3,13 +3,15 @@
      var u = owners && owners.get && owners.get(String(id));
      var display = u && (u.globalName || u.username);
      var handle = u && u.username ? '@' + u.username : '';
-     return (display ? '<strong>' + display + '</strong> ' : '')
+     var img = u && u.avatar ? '<img src="' + u.avatar + '" width="20" height="20" style="border-radius:50%;vertical-align:-5px;margin-right:6px">' : '';
+     var age = u && u.createdAt ? '<br><span class="muted">Discord since ' + new Date(u.createdAt).toISOString().slice(0,10) + '</span>' : '';
+     return img + (display ? '<strong>' + display + '</strong> ' : '')
           + (handle ? '<span class="muted">' + handle + '</span> ' : '')
-          + '<code>' + id + '</code>';
+          + '<code>' + id + '</code>' + age;
    } %>
 
 <div class="page-head">
-  <div><h1>Verified users</h1><div class="sub">Every Roblox ↔ Discord link — <%= rows.length %> total. Links are global, not per-server; "Active in" is inferred from that account's cases/shifts.</div></div>
+  <div><h1>Verified users</h1><div class="sub">Every Roblox ↔ Discord link — <%= rows.length %> total. Links are global, not per-server; activity below is inferred from that account's cases/shifts.</div></div>
   <a href="/admin" class="btn ghost sm">← Admin</a>
 </div>
 
@@ -23,13 +25,24 @@
       <% rows.forEach(function(r){ %>
         <tr>
           <td><%- person(r.discord_id) %></td>
-          <td><strong><%= r.roblox_name %></strong> <span class="muted"><%= r.roblox_id %></span></td>
+          <td>
+            <a href="https://www.roblox.com/users/<%= r.roblox_id %>/profile" target="_blank" rel="noopener"><strong><%= r.roblox_name %></strong></a>
+            <br><span class="muted"><%= r.roblox_id %></span>
+          </td>
           <td><%= ago(r.linked_at) %></td>
           <td>
             <% if (!r.guilds.length) { %>
               <span class="muted">no server activity yet</span>
             <% } else { %>
-              <% r.guilds.forEach(function(g, i){ %><% if (i) { %>, <% } %><%= g.name || ('…' + g.id.slice(-4)) %><% }) %>
+              <% r.guilds.forEach(function(g){ %>
+                <div>
+                  <a href="/dashboard/<%= g.id %>"><%= g.name || ('…' + g.id.slice(-4)) %></a>
+                  <span class="muted">
+                    <% if (g.cases) { %>· <%= g.cases %> case<%= g.cases === 1 ? "" : "s" %><% } %>
+                    <% if (g.shifts) { %>· <%= g.shifts %> shift<%= g.shifts === 1 ? "" : "s" %><% } %>
+                  </span>
+                </div>
+              <% }) %>
             <% } %>
           </td>
         </tr>

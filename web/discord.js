@@ -131,9 +131,9 @@ export async function userNames(ids) {
 const infoCache = new Map(); // id -> { info, at }
 
 /**
- * Resolve Discord user ids to { id, username, globalName } (bot token, cached).
- * `username` is the account's real handle (e.g. "voidnyx1"); `globalName` is the
- * chosen display name, which may be null.
+ * Resolve Discord user ids to { id, username, globalName, avatar } (bot token,
+ * cached). `username` is the account's real handle (e.g. "voidnyx1"); `globalName`
+ * is the chosen display name, which may be null. `avatar` is a ready-made CDN URL.
  */
 export async function userInfos(ids) {
   const out = new Map();
@@ -142,7 +142,13 @@ export async function userInfos(ids) {
       const c = infoCache.get(id);
       if (c && Date.now() - c.at < NAME_TTL) return out.set(id, c.info);
       const u = await bot(`/users/${id}`).catch(() => null);
-      const info = { id, username: u?.username || null, globalName: u?.global_name || null };
+      const info = {
+        id,
+        username: u?.username || null,
+        globalName: u?.global_name || null,
+        avatar: u?.avatar ? `https://cdn.discordapp.com/avatars/${id}/${u.avatar}.png?size=32` : null,
+        createdAt: Number((BigInt(id) >> 22n) + 1420070400000n),
+      };
       infoCache.set(id, { info, at: Date.now() });
       out.set(id, info);
     }),

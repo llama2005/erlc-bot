@@ -91,21 +91,33 @@ export async function adminGuilds(q = "") {
 export async function adminVerifiedUsers() {
   const rows = await many(
     `SELECT rl.discord_id, rl.roblox_id, rl.roblox_name, rl.linked_at,
-            (SELECT array_agg(DISTINCT g.guild_id) FROM (
-                SELECT guild_id FROM mod_cases WHERE moderator_id = rl.discord_id
-                UNION
-                SELECT guild_id FROM shifts WHERE user_id = rl.discord_id
-              ) g
-            ) guild_ids
+            (SELECT json_agg(json_build_object('guild_id', gg.guild_id, 'cases', gg.cases, 'shifts', gg.shifts))
+               FROM (
+                 SELECT g.guild_id,
+                        count(*) FILTER (WHERE g.src = 'case')::int  AS cases,
+                        count(*) FILTER (WHERE g.src = 'shift')::int AS shifts
+                   FROM (
+                     SELECT guild_id, 'case' AS src FROM mod_cases WHERE moderator_id = rl.discord_id
+                     UNION ALL
+                     SELECT guild_id, 'shift' AS src FROM shifts WHERE user_id = rl.discord_id
+                   ) g
+                  GROUP BY g.guild_id
+               ) gg
+            ) guild_stats
        FROM roblox_links rl
       ORDER BY rl.linked_at DESC
       LIMIT 500`,
   );
-  const guildIds = [...new Set(rows.flatMap((r) => r.guild_ids || []))];
-  const guildNames = guildIds.length
-    ? new Map((await many(`SELECT guild_id, name FROM bot_guilds WHERE guild_id = ANY($1)`, [guildIds])).map((g) => [g.guild_id, g.name]))
+  const guildIds = [...new Set(rows.flatMap((r) => (r.guild_stats || []).map((g) => g.guild_id)))];
+  const guildInfo = guildIds.length
+    ? new Map((await many(`SELECT guild_id, name, member_count FROM bot_guilds WHERE guild_id = ANY($1)`, [guildIds])).map((g) => [g.guild_id, g]))
     : new Map();
-  return rows.map((r) => ({ ...r, guilds: (r.guild_ids || []).map((id) => ({ id, name: guildNames.get(id) || null })) }));
+  return rows.map((r) => ({
+    ...r,
+    guilds: (r.guild_stats || [])
+      .map((g) => ({ id: g.guild_id, cases: g.cases, shifts: g.shifts, name: guildInfo.get(g.guild_id)?.name || null }))
+      .sort((a, b) => b.cases + b.shifts - (a.cases + a.shifts)),
+  }));
 }
 
 export const activeLocks = () =>
