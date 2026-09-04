@@ -24,6 +24,8 @@ services:
         sync: false
       - key: OWNER_IDS
         sync: false
+      - key: DASHBOARD_URL
+        sync: false # same value as the dashboard service's DASHBOARD_URL below — the bot needs it too for /dashboard, /website, /about, /setup, /support
       # --- recommended / optional (add in the Render dashboard, all safe to leave unset) ---
       # - key: SENTRY_DSN        # error reporting + the in-Discord "Report a problem" button
       # - key: BLOXLINK_API_KEY  # resolve accounts linked via Bloxlink, not just our /verify
