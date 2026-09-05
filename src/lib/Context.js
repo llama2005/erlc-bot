@@ -48,9 +48,9 @@ export class Context {
       if (!this.source.deferred && !this.source.replied) {
         await this.source.deferReply(this.command?.ephemeral ? { flags: MessageFlags.Ephemeral } : {});
       }
-    } else {
-      await this.channel.sendTyping().catch(() => {});
     }
+    // Prefix commands acknowledge instantly with a reaction (see CommandManager#handleMessage),
+    // not a typing indicator — that felt sluggish next to bots that just react and reply.
   }
 
   /** Reply with a string or a payload object ({ content, embeds, files, ephemeral }). */

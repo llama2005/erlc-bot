@@ -18,6 +18,7 @@ import { logCommand } from "./modlog.js";
 import { kvFlagSet, setKvFlag } from "./pg.js";
 import { captureError } from "./sentry.js";
 import { feedbackButton } from "./feedback.js";
+import { EMOJI } from "./style.js";
 import { gateCheck, gateReply } from "./ackGate.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -281,7 +282,16 @@ export class CommandManager {
         }
       }
       const ctx = new Context({ command, client: this.client, source: message });
-      await this.#run(command, ctx, { tokens });
+      // Instant "working…" acknowledgement (Whisp-style) for commands that do real work,
+      // instead of a typing indicator. Removed once the command has replied.
+      const ack = command.defer
+        ? message.react(EMOJI.loading).catch(() => message.react("⏳").catch(() => null))
+        : null;
+      try {
+        await this.#run(command, ctx, { tokens });
+      } finally {
+        if (ack) ack.then((r) => r?.users.remove(this.client.user.id).catch(() => {})).catch(() => {});
+      }
       return;
     }
 
@@ -357,7 +367,8 @@ export class CommandManager {
     ctx.args = parsed.args;
 
     try {
-      if (!interaction && command.defer) await ctx.defer();
+      // Slash commands are already deferred in handleInteraction; prefix commands are
+      // acknowledged with a reaction in handleMessage. Nothing to defer here.
       await command.execute(ctx);
       if (ctx.guild) {
         const argsText = renderArgs(command, ctx.args);
