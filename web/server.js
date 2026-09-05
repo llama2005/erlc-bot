@@ -125,12 +125,16 @@ app.get("/auth/callback", async (req, res) => {
   states.delete(state);
   try {
     const tok = await d.exchangeCode(code, REDIRECT);
-    const [me, guilds] = await Promise.all([d.getUser(tok.access_token), d.getUserGuilds(tok.access_token)]);
+    const me = await d.getUser(tok.access_token);
+    // Keep the session cookie small — the guild list can be hundreds of servers for a
+    // real Discord account and blows past the browser's ~4KB per-cookie limit, which
+    // gets silently dropped and looks exactly like a login loop. Fetch guilds fresh
+    // from Discord (with the access token) wherever they're actually needed instead.
     setSession(res, {
       id: me.id,
       username: me.global_name || me.username,
       avatar: me.avatar,
-      guilds: guilds.map((g) => ({ id: g.id, name: g.name, icon: g.icon, permissions: g.permissions })),
+      accessToken: tok.access_token,
     });
     res.redirect("/dashboard");
   } catch (err) {
@@ -210,8 +214,16 @@ app.get("/guide", async (req, res) => {
 
 // ---- dashboard ----
 app.get("/dashboard", requireAuth, async (req, res) => {
-  const botGuilds = new Set((await listBotGuilds()).map((g) => g.guild_id));
-  const manageable = (req.user.guilds || [])
+  const [botGuildRows, userGuilds] = await Promise.all([
+    listBotGuilds(),
+    d.getUserGuilds(req.user.accessToken).catch((e) => (e.code === 401 ? null : [])),
+  ]);
+  if (userGuilds === null) {
+    clearSession(res);
+    return res.redirect("/auth/login");
+  }
+  const botGuilds = new Set(botGuildRows.map((g) => g.guild_id));
+  const manageable = userGuilds
     .filter((g) => d.canManage(g.permissions))
     .map((g) => ({ ...g, botIn: botGuilds.has(g.id) }))
     .sort((a, b) => Number(b.botIn) - Number(a.botIn) || a.name.localeCompare(b.name));
@@ -227,13 +239,9 @@ function requireOperator(req, res, next) {
 async function requireGuildAdmin(req, res, next) {
   const guildId = req.params.guildId;
   const op = isOperator(req.user?.id); // bot operators can open any guild's dashboard
-  // Fast pre-filter from the (possibly stale) OAuth session…
-  const g = (req.user.guilds || []).find((x) => x.id === guildId);
-  if (!op && (!g || !d.canManage(g.permissions)))
-    return res.status(403).render("error", { user: req.user, message: "You don't have Manage Server in that guild." });
   const bg = await getBotGuild(guildId);
   if (!bg) return res.status(404).render("error", { user: req.user, message: "The bot isn't in that server yet." });
-  // …then the authoritative live check (5-min cache): current roles, or guild ownership.
+  // Authoritative live check (5-min cache): current roles, or guild ownership.
   const live = op || String(bg.owner_id) === String(req.user.id) || (await d.userManagesGuild(guildId, req.user.id));
   if (!live)
     return res.status(403).render("error", { user: req.user, message: "You no longer have Manage Server in that guild." });
